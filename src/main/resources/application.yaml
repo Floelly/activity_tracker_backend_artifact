@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: activitytrackerapi
+
+  datasource:
+    url: ${ACTIVITYTRACKER_DB_URL:jdbc:mysql://localhost:3306/activitytracker?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${ACTIVITYTRACKER_DB_USERNAME:activitytracker}
+    password: ${ACTIVITYTRACKER_DB_PASSWORD:activitytracker}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  jackson:
+    datatype:
+      datetime:
+        write-dates-as-timestamps: false
+        write-date-keys-as-timestamps: false
+        write-durations-as-timestamps: false
+        write-utc-as-offset: true
+    time-zone: UTC
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
