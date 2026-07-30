@@ -11,6 +11,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -93,5 +94,10 @@ class CategoryAllocationRepositoryIT extends MySQLContainerInitializer {
         boolean exists = categoryAllocationRepository.existsByCategory(category);
 
         assertThat(exists).isFalse();
+    }
+
+    @Test
+    void shouldFail() {
+        fail("For testing purposes only.");
     }
 }
