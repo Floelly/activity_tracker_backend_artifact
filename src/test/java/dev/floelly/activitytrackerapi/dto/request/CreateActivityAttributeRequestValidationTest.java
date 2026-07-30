@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 class CreateActivityAttributeRequestValidationTest {
 
@@ -156,5 +157,10 @@ class CreateActivityAttributeRequestValidationTest {
         assertThat(violations)
                 .extracting(ConstraintViolation::getPropertyPath)
                 .anySatisfy(path -> assertThat(path).hasToString("sortOrder"));
+    }
+
+    @Test
+    void shouldFail() {
+        fail("test failure");
     }
 }
