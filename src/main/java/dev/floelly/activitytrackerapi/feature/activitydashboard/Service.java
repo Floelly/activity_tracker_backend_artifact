@@ -3,7 +3,7 @@ package dev.floelly.activitytrackerapi.feature.activitydashboard;
 import dev.floelly.activitytrackerapi.entity.Activity;
 import dev.floelly.activitytrackerapi.entity.Category;
 import dev.floelly.activitytrackerapi.entity.CategoryAllocation;
-import dev.floelly.activitytrackerapi.exception.NotFoundException;
+import static dev.floelly.activitytrackerapi.exception.ExceptionFactory.categoriesNotFound;
 import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.ActivitiesDashboardFilterDTO;
 import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.Response;
 import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.SummaryResponse;
@@ -59,7 +59,7 @@ public class Service {
             List<String> missingIds = allowedCategoryIds.stream()
                     .filter(id -> categories.stream().noneMatch(category -> category.getBusinessId().equals(id)))
                     .toList();
-            throw new NotFoundException(String.format("One or more categories with the given ids were not found! %s", missingIds));
+            throw categoriesNotFound(missingIds);
         }
         return categories;
     }
