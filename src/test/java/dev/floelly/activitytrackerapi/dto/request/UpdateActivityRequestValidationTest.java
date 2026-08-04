@@ -232,4 +232,65 @@ class UpdateActivityRequestValidationTest {
                 .extracting(v -> v.getPropertyPath().toString())
                 .contains("categoryAllocations");
     }
+
+    @Test
+    void categoryAllocationSumNot100_hasViolation() {
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                "0123456789123",
+                "Some title",
+                "Some notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(60, "0123456789ABC", null),
+                        new CreateCategoryAllocationRequest(30, "0123456789ABD", null)
+                )
+        );
+
+        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(ConstraintViolation::getMessage)
+                .anySatisfy(msg -> assertThat(msg).contains("100%"));
+    }
+
+    @Test
+    void categoryAllocationDuplicateKeys_hasViolation() {
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                "0123456789123",
+                "Some title",
+                "Some notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(50, "0123456789ABC", "0123456789ABD"),
+                        new CreateCategoryAllocationRequest(50, "0123456789ABC", "0123456789ABD")
+                )
+        );
+
+        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(ConstraintViolation::getMessage)
+                .anySatisfy(msg -> assertThat(msg).contains("Duplicate category allocation keys"));
+    }
+
+    @Test
+    void multipleCategoryAllocationsSumTo100_hasNoViolations() {
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                "0123456789ABC",
+                "Some title",
+                "Some notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(60, "0123456789ABC", "0123456789ABD"),
+                        new CreateCategoryAllocationRequest(40, "0123456789ABE", null)
+                )
+        );
+
+        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
+
+        assertThat(violations).isEmpty();
+    }
 }

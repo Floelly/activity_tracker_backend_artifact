@@ -65,10 +65,6 @@ public class ActivityService {
 
     @Transactional
     public ActivityResponse registerNewActivity(CreateActivityRequest activityRequest) {
-        if (!activityRequest.categoryAllocations().isEmpty()) {
-            validateAllocations(activityRequest.categoryAllocations());
-            validateAllocationSum(activityRequest.categoryAllocations());
-        }
         Activity activity = commandMapper.toEntity(activityRequest);
 
         activity.setBusinessId(tsidFactory.generate().toString());
@@ -104,10 +100,6 @@ public class ActivityService {
             throw new BadRequestException("Activity id in request does not match the path variable");
         }
         List<CreateCategoryAllocationRequest> allocationRequests = activityRequest.categoryAllocations();
-        if (!allocationRequests.isEmpty()) {
-            validateAllocations(allocationRequests);
-            validateAllocationSum(allocationRequests);
-        }
         Activity activity = findByBusinessId(businessId);
         commandMapper.updateEntity(activityRequest, activity);
         mergeCategoryAllocations(activity, allocationRequests);
@@ -175,24 +167,6 @@ public class ActivityService {
             } else {
                 activity.getCategoryAllocations().add(mapRequestToCategoryAllocation(allocationRequest, activity));
             }
-        }
-    }
-
-    private void validateAllocationSum(List<CreateCategoryAllocationRequest> allocations) {
-        int percentageSum = allocations.stream()
-                .mapToInt(CreateCategoryAllocationRequest::percentage).sum();
-        if (percentageSum != 100) {
-            throw new BadRequestException("Sum of category allocations must be 100%");
-        }
-    }
-
-    private void validateAllocations(List<CreateCategoryAllocationRequest> allocationRequests) {
-        long distinctCount = allocationRequests.stream()
-                .map(this::allocationKey)
-                .distinct()
-                .count();
-        if (distinctCount != allocationRequests.size()) {
-            throw new BadRequestException("Duplicate category allocation keys found.");
         }
     }
 

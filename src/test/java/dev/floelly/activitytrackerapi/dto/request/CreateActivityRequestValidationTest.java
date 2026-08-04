@@ -35,7 +35,7 @@ class CreateActivityRequestValidationTest {
     @Test
     void validRequest_hasNoViolations() {
         var categoryAllocation = new CreateCategoryAllocationRequest(
-                50,
+                100,
                 "0A1B2C3D4E5F6",
                 null
         );
@@ -92,7 +92,7 @@ class CreateActivityRequestValidationTest {
                 Instant.parse("2024-01-01T11:00:00Z"),
                 List.of(
                         new CreateCategoryAllocationRequest(
-                                50,
+                                100,
                                 "0A1B2C3D4E5F6",
                                 null
                         )
@@ -126,7 +126,7 @@ class CreateActivityRequestValidationTest {
                 Instant.parse("2024-01-01T11:00:00Z"),
                 List.of(
                         new CreateCategoryAllocationRequest(
-                                50,
+                                100,
                                 "0A1B2C3D4E5F6",
                                 null
                         )
@@ -158,7 +158,7 @@ class CreateActivityRequestValidationTest {
                 Instant.parse("2024-01-01T11:00:00Z"),
                 List.of(
                         new CreateCategoryAllocationRequest(
-                                50,
+                                100,
                                 "0A1B2C3D4E5F6",
                                 null
                         )
@@ -190,7 +190,7 @@ class CreateActivityRequestValidationTest {
                 null,
                 List.of(
                         new CreateCategoryAllocationRequest(
-                                50,
+                                100,
                                 "0A1B2C3D4E5F6",
                                 null
                         )
@@ -223,7 +223,7 @@ class CreateActivityRequestValidationTest {
                 Instant.parse(endAtIsoString),
                 List.of(
                         new CreateCategoryAllocationRequest(
-                                50,
+                                100,
                                 "0A1B2C3D4E5F6",
                                 null
                         )
@@ -281,7 +281,7 @@ class CreateActivityRequestValidationTest {
                 Instant.parse("2024-01-01T11:00:00Z"),
                 List.of(
                         new CreateCategoryAllocationRequest(
-                                50,
+                                100,
                                 "0A1B2C3D4E5F6",
                                 null
                         )
@@ -306,7 +306,7 @@ class CreateActivityRequestValidationTest {
                 Instant.parse("2024-01-01T11:00:00Z"),
                 List.of(
                         new CreateCategoryAllocationRequest(
-                                50,
+                                100,
                                 "0A1B2C3D4E5F6",
                                 null
                         )
@@ -338,7 +338,7 @@ class CreateActivityRequestValidationTest {
                 Instant.parse("2024-01-01T11:00:00Z"),
                 List.of(
                         new CreateCategoryAllocationRequest(
-                                50,
+                                100,
                                 "0A1B2C3D4E5F6",
                                 null
                         )
@@ -359,5 +359,90 @@ class CreateActivityRequestValidationTest {
         assertThat(violations)
                 .extracting(ConstraintViolation::getPropertyPath)
                 .anySatisfy(path -> assertThat(path.toString()).startsWith("tagIds"));
+    }
+
+    @Test
+    void categoryAllocationSumNot100_hasViolation() {
+        var request = new CreateActivityRequest(
+                "My Activity",
+                "Some notes",
+                Instant.parse("2024-01-01T10:00:00Z"),
+                Instant.parse("2024-01-01T11:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(50, "0A1B2C3D4E5F6", null),
+                        new CreateCategoryAllocationRequest(30, "1A2B3C4D5E6F7", null)
+                ),
+                List.of(
+                        new CreateActivityAttributeRequest(
+                                "priority",
+                                "high",
+                                Boolean.TRUE,
+                                0
+                        )
+                ),
+                List.of("1A2B3C4D5E6F7")
+        );
+
+        var violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(ConstraintViolation::getMessage)
+                .anySatisfy(msg -> assertThat(msg).contains("100%"));
+    }
+
+    @Test
+    void categoryAllocationDuplicateKeys_hasViolation() {
+        var request = new CreateActivityRequest(
+                "My Activity",
+                "Some notes",
+                Instant.parse("2024-01-01T10:00:00Z"),
+                Instant.parse("2024-01-01T11:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(50, "0A1B2C3D4E5F6", null),
+                        new CreateCategoryAllocationRequest(50, "0A1B2C3D4E5F6", null)
+                ),
+                List.of(
+                        new CreateActivityAttributeRequest(
+                                "priority",
+                                "high",
+                                Boolean.TRUE,
+                                0
+                        )
+                ),
+                List.of("1A2B3C4D5E6F7")
+        );
+
+        var violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(ConstraintViolation::getMessage)
+                .anySatisfy(msg -> assertThat(msg).contains("Duplicate category allocation keys"));
+    }
+
+    @Test
+    void multipleCategoryAllocationsSumTo100_hasNoViolations() {
+        var request = new CreateActivityRequest(
+                "My Activity",
+                "Some notes",
+                Instant.parse("2024-01-01T10:00:00Z"),
+                Instant.parse("2024-01-01T11:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(60, "0A1B2C3D4E5F6", "1A2B3C4D5E6F7"),
+                        new CreateCategoryAllocationRequest(40, "1A2B3C4D5E6F7", null)
+                ),
+                List.of(
+                        new CreateActivityAttributeRequest(
+                                "priority",
+                                "high",
+                                Boolean.TRUE,
+                                0
+                        )
+                ),
+                List.of("1A2B3C4D5E6F7")
+        );
+
+        var violations = validator.validate(request);
+
+        assertThat(violations).isEmpty();
     }
 }
