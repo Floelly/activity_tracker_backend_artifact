@@ -713,4 +713,81 @@ class ActivityServiceTest {
                 .hasMessageContaining("SubCategory")
                 .hasMessageContaining("is not related to Category");
     }
+
+    @Test
+    void mergeCategoryAllocations_shouldUseAllocationKeyForExistingAllocations() {
+        String businessId = "act-1";
+
+        Category category = new Category();
+        category.setBusinessId("cat-1");
+
+        SubCategory subCategory = new SubCategory();
+        subCategory.setBusinessId("sub-1");
+
+        CategoryAllocation existingAllocation = new CategoryAllocation();
+        existingAllocation.setCategory(category);
+        existingAllocation.setSubCategory(subCategory);
+        existingAllocation.setPercentage(40);
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>(Set.of(existingAllocation)));
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", "sub-1"))
+        );
+
+        ActivityResponse response = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(responseMapper.toResponse(activity)).thenReturn(response);
+
+        ActivityResponse result = service.updateActivity(businessId, request);
+
+        assertThat(result).isSameAs(response);
+        assertThat(activity.getCategoryAllocations()).hasSize(1);
+        assertThat(existingAllocation.getPercentage()).isEqualTo(100);
+    }
+
+    @Test
+    void mergeCategoryAllocations_shouldUseAllocationKeyForRequestedAllocations() {
+        String businessId = "act-1";
+
+        Category category = new Category();
+        category.setBusinessId("cat-1");
+
+        CategoryAllocation existingAllocation = new CategoryAllocation();
+        existingAllocation.setCategory(category);
+        existingAllocation.setSubCategory(null);
+        existingAllocation.setPercentage(40);
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>(Set.of(existingAllocation)));
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null))
+        );
+
+        ActivityResponse response = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(responseMapper.toResponse(activity)).thenReturn(response);
+
+        ActivityResponse result = service.updateActivity(businessId, request);
+
+        assertThat(result).isSameAs(response);
+        assertThat(activity.getCategoryAllocations()).hasSize(1);
+        assertThat(existingAllocation.getPercentage()).isEqualTo(100);
+    }
 }

@@ -15,6 +15,7 @@ import dev.floelly.activitytrackerapi.entity.SubCategory;
 import dev.floelly.activitytrackerapi.entity.Tag;
 import dev.floelly.activitytrackerapi.exception.BadRequestException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
+import dev.floelly.activitytrackerapi.valueobject.AllocationKey;
 import dev.floelly.activitytrackerapi.mapper.ActivityCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.ActivityResponseMapper;
 import dev.floelly.activitytrackerapi.repository.ActivityRepository;
@@ -151,15 +152,14 @@ public class ActivityService {
         return allocation;
     }
 
-    @SuppressWarnings("PMD.LooseCoupling")
     private void mergeCategoryAllocations(Activity activity, List<CreateCategoryAllocationRequest> allocationRequests) {
-        Map<String, CategoryAllocation> existingByKey = activity.getCategoryAllocations().stream()
+        Map<AllocationKey, CategoryAllocation> existingByKey = activity.getCategoryAllocations().stream()
                 .collect(Collectors.toMap(
                         this::allocationKey,
                         Function.identity()
                 ));
 
-        List<String> requestedByKey = allocationRequests.stream()
+        List<AllocationKey> requestedByKey = allocationRequests.stream()
                 .map(this::allocationKey)
                 .toList();
 
@@ -167,7 +167,7 @@ public class ActivityService {
                 !requestedByKey.contains(allocationKey(existing)));
 
         for (CreateCategoryAllocationRequest allocationRequest : allocationRequests) {
-            String key = allocationKey(allocationRequest);
+            AllocationKey key = allocationKey(allocationRequest);
             CategoryAllocation existing = existingByKey.get(key);
 
             if (existing != null) {
@@ -196,16 +196,15 @@ public class ActivityService {
         }
     }
 
-    private String allocationKey(CreateCategoryAllocationRequest request) {
-        return request.categoryId() + "::" + request.subCategoryId();
+    private AllocationKey allocationKey(CreateCategoryAllocationRequest request) {
+        return AllocationKey.of(request.categoryId(), request.subCategoryId());
     }
 
-    @SuppressWarnings("PMD.UnusedPrivateMethod")
-    private String allocationKey(CategoryAllocation allocation) {
+    private AllocationKey allocationKey(CategoryAllocation allocation) {
         String subCategoryId = allocation.getSubCategory() != null
                 ? allocation.getSubCategory().getBusinessId()
                 : null;
-        return allocation.getCategory().getBusinessId() + "::" + subCategoryId;
+        return AllocationKey.of(allocation.getCategory().getBusinessId(), subCategoryId);
     }
 
     private NotFoundException generateNotFoundException(String resource, String id) {
