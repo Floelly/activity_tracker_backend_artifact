@@ -12,6 +12,7 @@ import dev.floelly.activitytrackerapi.repository.ActivityRepository;
 import dev.floelly.activitytrackerapi.repository.CategoryRepository;
 import dev.floelly.activitytrackerapi.repository.SubCategoryRepository;
 import dev.floelly.activitytrackerapi.repository.TagRepository;
+import dev.floelly.activitytrackerapi.validation.AllocationValidator;
 import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +47,9 @@ class ActivityServiceTest {
     private SubCategoryRepository subCategoryRepository;
     @Mock
     private TagRepository tagRepository;
+
+    @Mock
+    private AllocationValidator allocationValidator;
 
     @InjectMocks
     private ActivityService service;
@@ -218,10 +222,8 @@ class ActivityServiceTest {
         when(request.tagIds()).thenReturn(List.of("tag-1"));
         when(allocationRequest1.categoryId()).thenReturn("cat-1");
         when(allocationRequest1.subCategoryId()).thenReturn("sub-1");
-        when(allocationRequest1.percentage()).thenReturn(80);
         when(allocationRequest2.categoryId()).thenReturn("cat-2");
         when(allocationRequest2.subCategoryId()).thenReturn(null);
-        when(allocationRequest2.percentage()).thenReturn(20);
 
         TSID tsid = mock(TSID.class);
         when(tsidFactory.generate()).thenReturn(tsid);
@@ -263,12 +265,9 @@ class ActivityServiceTest {
         CreateCategoryAllocationRequest allocationRequest2 = mock(CreateCategoryAllocationRequest.class);
 
         when(request.categoryAllocations()).thenReturn(List.of(allocationRequest1, allocationRequest2));
-        when(allocationRequest1.categoryId()).thenReturn("cat-1");
-        when(allocationRequest1.subCategoryId()).thenReturn(null);
-        when(allocationRequest1.percentage()).thenReturn(60);
-        when(allocationRequest2.categoryId()).thenReturn("cat-2");
-        when(allocationRequest2.subCategoryId()).thenReturn(null);
-        when(allocationRequest2.percentage()).thenReturn(30);
+
+        doThrow(new BadRequestException("Sum of category allocations must be 100%"))
+                .when(allocationValidator).validateAllocationSum(anyList());
 
         assertThatThrownBy(() -> service.registerNewActivity(request))
                 .isInstanceOf(BadRequestException.class)
@@ -283,6 +282,9 @@ class ActivityServiceTest {
         CreateCategoryAllocationRequest allocationRequest1 = new CreateCategoryAllocationRequest(50, "cat-1", null);
         CreateCategoryAllocationRequest allocationRequest2 = new CreateCategoryAllocationRequest(50, "cat-1", null);
         when(request.categoryAllocations()).thenReturn(List.of(allocationRequest1, allocationRequest2));
+
+        doThrow(new BadRequestException("Duplicate category allocation keys found."))
+                .when(allocationValidator).validateAllocations(anyList());
 
         assertThatThrownBy(() -> service.registerNewActivity(request))
                 .isInstanceOf(BadRequestException.class)
@@ -302,7 +304,6 @@ class ActivityServiceTest {
 
         when(allocationRequest.categoryId()).thenReturn("missing-cat");
         when(allocationRequest.subCategoryId()).thenReturn(null);
-        when(allocationRequest.percentage()).thenReturn(100);
 
         when(categoryRepository.findByBusinessId("missing-cat")).thenReturn(Optional.empty());
 
@@ -329,7 +330,6 @@ class ActivityServiceTest {
 
         when(allocationRequest.categoryId()).thenReturn("known-cat");
         when(allocationRequest.subCategoryId()).thenReturn("missing-sub-cat");
-        when(allocationRequest.percentage()).thenReturn(100);
 
         when(categoryRepository.findByBusinessId("known-cat")).thenReturn(Optional.of(new Category()));
         when(subCategoryRepository.findByBusinessId("missing-sub-cat")).thenReturn(Optional.empty());
@@ -367,7 +367,6 @@ class ActivityServiceTest {
         when(request.categoryAllocations()).thenReturn(List.of(allocationRequest));
         when(allocationRequest.categoryId()).thenReturn("cat-1");
         when(allocationRequest.subCategoryId()).thenReturn("sub-1");
-        when(allocationRequest.percentage()).thenReturn(100);
 
         when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
         when(subCategoryRepository.findByBusinessId("sub-1")).thenReturn(Optional.of(subCategory));
@@ -466,6 +465,9 @@ class ActivityServiceTest {
                 )
         );
 
+        doThrow(new BadRequestException("Sum of category allocations must be 100%"))
+                .when(allocationValidator).validateAllocationSum(anyList());
+
         assertThatThrownBy(() -> service.updateActivity(businessId, request))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Sum of category allocations must be 100%");
@@ -487,6 +489,9 @@ class ActivityServiceTest {
                         new CreateCategoryAllocationRequest(50, "cat-1", "sub-cat-1")
                 )
         );
+
+        doThrow(new BadRequestException("Duplicate category allocation keys found."))
+                .when(allocationValidator).validateAllocations(anyList());
 
         assertThatThrownBy(() -> service.updateActivity(businessId, request))
                 .isInstanceOf(BadRequestException.class)
@@ -597,6 +602,7 @@ class ActivityServiceTest {
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
         when(responseMapper.toResponse(activity)).thenReturn(response);
+        when(allocationValidator.allocationKey(any())).thenReturn("cat-1::null");
 
         ActivityResponse result = service.updateActivity(businessId, request);
 

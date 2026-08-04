@@ -22,6 +22,7 @@ import dev.floelly.activitytrackerapi.repository.ActivitySpecifications;
 import dev.floelly.activitytrackerapi.repository.CategoryRepository;
 import dev.floelly.activitytrackerapi.repository.SubCategoryRepository;
 import dev.floelly.activitytrackerapi.repository.TagRepository;
+import dev.floelly.activitytrackerapi.validation.AllocationValidator;
 import io.hypersistence.tsid.TSID;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,8 @@ public class ActivityService {
 
     private final TagRepository tagRepository;
 
+    private final AllocationValidator allocationValidator;
+
     @Transactional(readOnly = true)
     public ActivityResponse findActivityByBusinessId(String businessId) {
         Activity activity = findByBusinessId(businessId);
@@ -66,8 +69,8 @@ public class ActivityService {
     @Transactional
     public ActivityResponse registerNewActivity(CreateActivityRequest activityRequest) {
         if (!activityRequest.categoryAllocations().isEmpty()) {
-            validateAllocations(activityRequest.categoryAllocations());
-            validateAllocationSum(activityRequest.categoryAllocations());
+            allocationValidator.validateAllocations(activityRequest.categoryAllocations());
+            allocationValidator.validateAllocationSum(activityRequest.categoryAllocations());
         }
         Activity activity = commandMapper.toEntity(activityRequest);
 
@@ -105,8 +108,8 @@ public class ActivityService {
         }
         List<CreateCategoryAllocationRequest> allocationRequests = activityRequest.categoryAllocations();
         if (!allocationRequests.isEmpty()) {
-            validateAllocations(allocationRequests);
-            validateAllocationSum(allocationRequests);
+            allocationValidator.validateAllocations(allocationRequests);
+            allocationValidator.validateAllocationSum(allocationRequests);
         }
         Activity activity = findByBusinessId(businessId);
         commandMapper.updateEntity(activityRequest, activity);
@@ -160,14 +163,14 @@ public class ActivityService {
                 ));
 
         List<String> requestedByKey = allocationRequests.stream()
-                .map(this::allocationKey)
+                .map(allocationValidator::allocationKey)
                 .toList();
 
         activity.getCategoryAllocations().removeIf(existing ->
                 !requestedByKey.contains(allocationKey(existing)));
 
         for (CreateCategoryAllocationRequest allocationRequest : allocationRequests) {
-            String key = allocationKey(allocationRequest);
+            String key = allocationValidator.allocationKey(allocationRequest);
             CategoryAllocation existing = existingByKey.get(key);
 
             if (existing != null) {
@@ -176,28 +179,6 @@ public class ActivityService {
                 activity.getCategoryAllocations().add(mapRequestToCategoryAllocation(allocationRequest, activity));
             }
         }
-    }
-
-    private void validateAllocationSum(List<CreateCategoryAllocationRequest> allocations) {
-        int percentageSum = allocations.stream()
-                .mapToInt(CreateCategoryAllocationRequest::percentage).sum();
-        if (percentageSum != 100) {
-            throw new BadRequestException("Sum of category allocations must be 100%");
-        }
-    }
-
-    private void validateAllocations(List<CreateCategoryAllocationRequest> allocationRequests) {
-        long distinctCount = allocationRequests.stream()
-                .map(this::allocationKey)
-                .distinct()
-                .count();
-        if (distinctCount != allocationRequests.size()) {
-            throw new BadRequestException("Duplicate category allocation keys found.");
-        }
-    }
-
-    private String allocationKey(CreateCategoryAllocationRequest request) {
-        return request.categoryId() + "::" + request.subCategoryId();
     }
 
     @SuppressWarnings("PMD.UnusedPrivateMethod")
