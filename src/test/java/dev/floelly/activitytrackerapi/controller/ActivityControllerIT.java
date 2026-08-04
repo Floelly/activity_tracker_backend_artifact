@@ -424,7 +424,9 @@ class ActivityControllerIT {
                     "notes": "Some notes UPDATE",
                     "startAt": "2023-01-01T03:00:00Z",
                     "endAt": "2023-01-01T05:00:00Z",
-                    "categoryAllocations": []
+                    "categoryAllocations": [],
+                    "customValues": [],
+                    "tagIds": []
                 }
                 """, activityId);
 
@@ -499,7 +501,9 @@ class ActivityControllerIT {
                             "categoryId": "%s",
                             "subCategoryId": null
                         }
-                    ]
+                    ],
+                    "customValues": [],
+                    "tagIds": []
                 }
                 """, activityId, categoryId4, categoryId2, categoryId1);
 
@@ -533,7 +537,9 @@ class ActivityControllerIT {
                     "notes": "Some notes UPDATE",
                     "startAt": "2023-01-01T03:00:00Z",
                     "endAt": "2023-01-01T05:00:00Z",
-                    "categoryAllocations": []
+                    "categoryAllocations": [],
+                    "customValues": [],
+                    "tagIds": []
                 }
                 """;
 
@@ -553,6 +559,8 @@ class ActivityControllerIT {
                     "startAt": "2023-01-01T03:00:00Z",
                     "endAt": "2023-01-01T05:00:00Z",
                     "categoryAllocations": [],
+                    "customValues": [],
+                    "tagIds": []
                 }
                 """;
         mockMvc.perform(put("/api/activities/invalid-id")
@@ -574,6 +582,8 @@ class ActivityControllerIT {
                     "startAt": "2023-01-01T03:00:00Z",
                     "endAt": "2023-01-01T05:00:00Z",
                     "categoryAllocations": [],
+                    "customValues": [],
+                    "tagIds": []
                 }
                 """, activityId1);
         mockMvc.perform(put("/api/activities/" + activityId2)
@@ -723,3 +733,5 @@ class ActivityControllerIT {
                 .asString();
     }
 }
+
+
