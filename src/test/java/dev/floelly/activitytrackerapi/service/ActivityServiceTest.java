@@ -6,7 +6,9 @@ import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
 import dev.floelly.activitytrackerapi.entity.*;
 import dev.floelly.activitytrackerapi.exception.BadRequestException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
+import dev.floelly.activitytrackerapi.mapper.ActivityAttributeMapper;
 import dev.floelly.activitytrackerapi.mapper.ActivityCommandMapper;
+import dev.floelly.activitytrackerapi.mapper.CategoryAllocationMapper;
 import dev.floelly.activitytrackerapi.mapper.ActivityResponseMapper;
 import dev.floelly.activitytrackerapi.repository.ActivityRepository;
 import dev.floelly.activitytrackerapi.repository.CategoryRepository;
@@ -38,6 +40,10 @@ class ActivityServiceTest {
     private ActivityCommandMapper commandMapper;
     @Mock
     private ActivityResponseMapper responseMapper;
+    @Mock
+    private CategoryAllocationMapper categoryAllocationMapper;
+    @Mock
+    private ActivityAttributeMapper activityAttributeMapper;
     @Mock
     private CategoryService categoryService;
     @Mock
@@ -198,6 +204,7 @@ class ActivityServiceTest {
 
         CreateActivityAttributeRequest attributeRequest = mock(CreateActivityAttributeRequest.class);
         ActivityAttribute attribute = new ActivityAttribute();
+        attribute.setActivity(mappedActivity);
 
         CreateCategoryAllocationRequest allocationRequest1 = mock(CreateCategoryAllocationRequest.class);
         CreateCategoryAllocationRequest allocationRequest2 = mock(CreateCategoryAllocationRequest.class);
@@ -230,11 +237,12 @@ class ActivityServiceTest {
         when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category1));
         when(categoryRepository.findByBusinessId("cat-2")).thenReturn(Optional.of(new Category()));
         when(subCategoryRepository.findByBusinessId("sub-1")).thenReturn(Optional.of(subCategory1));
-        when(commandMapper.toEntity(allocationRequest1)).thenReturn(allocation1);
-        when(commandMapper.toEntity(allocationRequest2)).thenReturn(allocation2);
         when(categoryService.isValidCategorySubCategoryRelation(category1, subCategory1)).thenReturn(true);
 
-        when(commandMapper.toEntity(attributeRequest)).thenReturn(attribute);
+        when(categoryAllocationMapper.toEntity(allocationRequest1, mappedActivity, category1, subCategory1)).thenReturn(allocation1);
+        when(categoryAllocationMapper.toEntity(eq(allocationRequest2), eq(mappedActivity), any(Category.class), isNull())).thenReturn(allocation2);
+
+        when(activityAttributeMapper.toEntity(attributeRequest, mappedActivity)).thenReturn(attribute);
 
         when(tagRepository.findByBusinessIdIn(request.tagIds())).thenReturn(Set.of(tag));
         when(responseMapper.toResponse(mappedActivity)).thenReturn(expected);
@@ -550,10 +558,12 @@ class ActivityServiceTest {
         ActivityResponse response = mock(ActivityResponse.class);
         CategoryAllocation mappedAllocation = new CategoryAllocation();
         mappedAllocation.setPercentage(100);
+        mappedAllocation.setActivity(activity);
+        mappedAllocation.setCategory(category);
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
         when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
-        when(commandMapper.toEntity(any(CreateCategoryAllocationRequest.class))).thenReturn(mappedAllocation);
+        when(categoryAllocationMapper.toEntity(any(CreateCategoryAllocationRequest.class), eq(activity), eq(category), isNull())).thenReturn(mappedAllocation);
         when(responseMapper.toResponse(activity)).thenReturn(response);
 
         ActivityResponse result = service.updateActivity(businessId, request);
@@ -637,12 +647,14 @@ class ActivityServiceTest {
 
         CategoryAllocation newAllocation = new CategoryAllocation();
         newAllocation.setPercentage(100);
+        newAllocation.setActivity(activity);
+        newAllocation.setCategory(newCategory);
 
         ActivityResponse response = mock(ActivityResponse.class);
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
         when(categoryRepository.findByBusinessId("cat-new")).thenReturn(Optional.of(newCategory));
-        when(commandMapper.toEntity(any(CreateCategoryAllocationRequest.class))).thenReturn(newAllocation);
+        when(categoryAllocationMapper.toEntity(any(CreateCategoryAllocationRequest.class), eq(activity), eq(newCategory), isNull())).thenReturn(newAllocation);
         when(responseMapper.toResponse(activity)).thenReturn(response);
 
         service.updateActivity(businessId, request);

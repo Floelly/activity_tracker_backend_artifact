@@ -1,7 +1,6 @@
 package dev.floelly.activitytrackerapi.service;
 
 import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
-import dev.floelly.activitytrackerapi.dto.request.CreateActivityAttributeRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateCategoryAllocationRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
@@ -15,7 +14,9 @@ import dev.floelly.activitytrackerapi.entity.SubCategory;
 import dev.floelly.activitytrackerapi.entity.Tag;
 import dev.floelly.activitytrackerapi.exception.BadRequestException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
+import dev.floelly.activitytrackerapi.mapper.ActivityAttributeMapper;
 import dev.floelly.activitytrackerapi.mapper.ActivityCommandMapper;
+import dev.floelly.activitytrackerapi.mapper.CategoryAllocationMapper;
 import dev.floelly.activitytrackerapi.mapper.ActivityResponseMapper;
 import dev.floelly.activitytrackerapi.repository.ActivityRepository;
 import dev.floelly.activitytrackerapi.repository.ActivitySpecifications;
@@ -44,6 +45,8 @@ public class ActivityService {
     private final ActivityRepository repository;
     private final ActivityCommandMapper commandMapper;
     private final ActivityResponseMapper responseMapper;
+    private final CategoryAllocationMapper categoryAllocationMapper;
+    private final ActivityAttributeMapper activityAttributeMapper;
 
     private final CategoryService categoryService;
     private final CategoryRepository categoryRepository;
@@ -75,12 +78,28 @@ public class ActivityService {
         activity.setCreatedAt(Instant.now());
 
         Set<CategoryAllocation> allocations = activityRequest.categoryAllocations().stream()
-                .map(allocationRequest -> mapRequestToCategoryAllocation(allocationRequest, activity))
+                .map(allocationRequest -> {
+                    String categoryBusinessId = allocationRequest.categoryId();
+                    String subCategoryBusinessId = allocationRequest.subCategoryId();
+                    Category category = categoryRepository.findByBusinessId(categoryBusinessId)
+                            .orElseThrow(() -> generateNotFoundException("Category", categoryBusinessId));
+                    SubCategory subCategory = null;
+                    if (subCategoryBusinessId != null) {
+                        subCategory = subCategoryRepository.findByBusinessId(subCategoryBusinessId)
+                                .orElseThrow(() -> generateNotFoundException("SubCategory", subCategoryBusinessId));
+                        if (!categoryService.isValidCategorySubCategoryRelation(category, subCategory)) {
+                            throw new BadRequestException("SubCategory '" + subCategory.getName()
+                                    + "' (id: " + subCategory.getBusinessId() + ") is not related to Category '" + category.getName()
+                                    + "' (id: " + category.getBusinessId() + ").");
+                        }
+                    }
+                    return categoryAllocationMapper.toEntity(allocationRequest, activity, category, subCategory);
+                })
                 .collect(Collectors.toSet());
         activity.setCategoryAllocations(allocations);
 
         Set<ActivityAttribute> attributes = activityRequest.customValues().stream()
-                .map(attributeRequest -> mapRequestToActivityAttribute(attributeRequest, activity))
+                .map(attributeRequest -> activityAttributeMapper.toEntity(attributeRequest, activity))
                 .collect(Collectors.toSet());
         activity.setAttributes(attributes);
 
@@ -122,35 +141,6 @@ public class ActivityService {
                 .orElseThrow(() -> generateNotFoundException("Activity", businessId));
     }
 
-    private ActivityAttribute mapRequestToActivityAttribute(CreateActivityAttributeRequest attributeRequest, Activity activity) {
-        ActivityAttribute attribute = commandMapper.toEntity(attributeRequest);
-        attribute.setActivity(activity);
-        return attribute;
-    }
-
-    private CategoryAllocation mapRequestToCategoryAllocation(CreateCategoryAllocationRequest request, Activity activity) {
-        String categoryBusinessId = request.categoryId();
-        String subCategoryBusinessId = request.subCategoryId();
-        Category category = categoryRepository.findByBusinessId(categoryBusinessId)
-                .orElseThrow(() -> generateNotFoundException("Category", categoryBusinessId));
-        SubCategory subCategory = null;
-        if (subCategoryBusinessId != null) {
-            subCategory = subCategoryRepository.findByBusinessId(subCategoryBusinessId)
-                    .orElseThrow(() -> generateNotFoundException("SubCategory", subCategoryBusinessId));
-            if (!categoryService.isValidCategorySubCategoryRelation(category, subCategory)) {
-                throw new BadRequestException("SubCategory '" + subCategory.getName()
-                        + "' (id: " + subCategory.getBusinessId() + ") is not related to Category '" + category.getName()
-                        + "' (id: " + category.getBusinessId() + ").");
-            }
-        }
-
-        CategoryAllocation allocation = commandMapper.toEntity(request);
-        allocation.setActivity(activity);
-        allocation.setCategory(category);
-        allocation.setSubCategory(subCategory);
-        return allocation;
-    }
-
     @SuppressWarnings("PMD.LooseCoupling")
     private void mergeCategoryAllocations(Activity activity, List<CreateCategoryAllocationRequest> allocationRequests) {
         Map<String, CategoryAllocation> existingByKey = activity.getCategoryAllocations().stream()
@@ -173,7 +163,22 @@ public class ActivityService {
             if (existing != null) {
                 existing.setPercentage(allocationRequest.percentage());
             } else {
-                activity.getCategoryAllocations().add(mapRequestToCategoryAllocation(allocationRequest, activity));
+                String categoryBusinessId = allocationRequest.categoryId();
+                String subCategoryBusinessId = allocationRequest.subCategoryId();
+                Category category = categoryRepository.findByBusinessId(categoryBusinessId)
+                        .orElseThrow(() -> generateNotFoundException("Category", categoryBusinessId));
+                SubCategory subCategory = null;
+                if (subCategoryBusinessId != null) {
+                    subCategory = subCategoryRepository.findByBusinessId(subCategoryBusinessId)
+                            .orElseThrow(() -> generateNotFoundException("SubCategory", subCategoryBusinessId));
+                    if (!categoryService.isValidCategorySubCategoryRelation(category, subCategory)) {
+                        throw new BadRequestException("SubCategory '" + subCategory.getName()
+                                + "' (id: " + subCategory.getBusinessId() + ") is not related to Category '" + category.getName()
+                                + "' (id: " + category.getBusinessId() + ").");
+                    }
+                }
+                activity.getCategoryAllocations().add(
+                        categoryAllocationMapper.toEntity(allocationRequest, activity, category, subCategory));
             }
         }
     }
