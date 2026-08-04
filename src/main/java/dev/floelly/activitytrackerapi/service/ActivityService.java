@@ -1,7 +1,6 @@
 package dev.floelly.activitytrackerapi.service;
 
 import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
-import dev.floelly.activitytrackerapi.dto.request.CreateActivityAttributeRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateCategoryAllocationRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
@@ -9,18 +8,16 @@ import dev.floelly.activitytrackerapi.dto.response.ActivitiesResponse;
 import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
 import dev.floelly.activitytrackerapi.entity.Activity;
 import dev.floelly.activitytrackerapi.entity.ActivityAttribute;
-import dev.floelly.activitytrackerapi.entity.Category;
 import dev.floelly.activitytrackerapi.entity.CategoryAllocation;
-import dev.floelly.activitytrackerapi.entity.SubCategory;
 import dev.floelly.activitytrackerapi.entity.Tag;
 import dev.floelly.activitytrackerapi.exception.BadRequestException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
+import dev.floelly.activitytrackerapi.mapper.ActivityAttributeMapper;
 import dev.floelly.activitytrackerapi.mapper.ActivityCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.ActivityResponseMapper;
+import dev.floelly.activitytrackerapi.mapper.CategoryAllocationMapper;
 import dev.floelly.activitytrackerapi.repository.ActivityRepository;
 import dev.floelly.activitytrackerapi.repository.ActivitySpecifications;
-import dev.floelly.activitytrackerapi.repository.CategoryRepository;
-import dev.floelly.activitytrackerapi.repository.SubCategoryRepository;
 import dev.floelly.activitytrackerapi.repository.TagRepository;
 import io.hypersistence.tsid.TSID;
 import lombok.NonNull;
@@ -44,10 +41,8 @@ public class ActivityService {
     private final ActivityRepository repository;
     private final ActivityCommandMapper commandMapper;
     private final ActivityResponseMapper responseMapper;
-
-    private final CategoryService categoryService;
-    private final CategoryRepository categoryRepository;
-    private final SubCategoryRepository subCategoryRepository;
+    private final CategoryAllocationMapper categoryAllocationMapper;
+    private final ActivityAttributeMapper activityAttributeMapper;
 
     private final TagRepository tagRepository;
 
@@ -75,12 +70,12 @@ public class ActivityService {
         activity.setCreatedAt(Instant.now());
 
         Set<CategoryAllocation> allocations = activityRequest.categoryAllocations().stream()
-                .map(allocationRequest -> mapRequestToCategoryAllocation(allocationRequest, activity))
+                .map(allocationRequest -> categoryAllocationMapper.toEntity(allocationRequest, activity))
                 .collect(Collectors.toSet());
         activity.setCategoryAllocations(allocations);
 
         Set<ActivityAttribute> attributes = activityRequest.customValues().stream()
-                .map(attributeRequest -> mapRequestToActivityAttribute(attributeRequest, activity))
+                .map(attributeRequest -> activityAttributeMapper.toEntity(attributeRequest, activity))
                 .collect(Collectors.toSet());
         activity.setAttributes(attributes);
 
@@ -119,36 +114,7 @@ public class ActivityService {
 
     private Activity findByBusinessId(String businessId) {
         return repository.findByBusinessId(businessId)
-                .orElseThrow(() -> generateNotFoundException("Activity", businessId));
-    }
-
-    private ActivityAttribute mapRequestToActivityAttribute(CreateActivityAttributeRequest attributeRequest, Activity activity) {
-        ActivityAttribute attribute = commandMapper.toEntity(attributeRequest);
-        attribute.setActivity(activity);
-        return attribute;
-    }
-
-    private CategoryAllocation mapRequestToCategoryAllocation(CreateCategoryAllocationRequest request, Activity activity) {
-        String categoryBusinessId = request.categoryId();
-        String subCategoryBusinessId = request.subCategoryId();
-        Category category = categoryRepository.findByBusinessId(categoryBusinessId)
-                .orElseThrow(() -> generateNotFoundException("Category", categoryBusinessId));
-        SubCategory subCategory = null;
-        if (subCategoryBusinessId != null) {
-            subCategory = subCategoryRepository.findByBusinessId(subCategoryBusinessId)
-                    .orElseThrow(() -> generateNotFoundException("SubCategory", subCategoryBusinessId));
-            if (!categoryService.isValidCategorySubCategoryRelation(category, subCategory)) {
-                throw new BadRequestException("SubCategory '" + subCategory.getName()
-                        + "' (id: " + subCategory.getBusinessId() + ") is not related to Category '" + category.getName()
-                        + "' (id: " + category.getBusinessId() + ").");
-            }
-        }
-
-        CategoryAllocation allocation = commandMapper.toEntity(request);
-        allocation.setActivity(activity);
-        allocation.setCategory(category);
-        allocation.setSubCategory(subCategory);
-        return allocation;
+                .orElseThrow(() -> new NotFoundException("Activity with id '" + businessId + "' not found."));
     }
 
     @SuppressWarnings("PMD.LooseCoupling")
@@ -173,7 +139,7 @@ public class ActivityService {
             if (existing != null) {
                 existing.setPercentage(allocationRequest.percentage());
             } else {
-                activity.getCategoryAllocations().add(mapRequestToCategoryAllocation(allocationRequest, activity));
+                activity.getCategoryAllocations().add(categoryAllocationMapper.toEntity(allocationRequest, activity));
             }
         }
     }
@@ -206,9 +172,5 @@ public class ActivityService {
                 ? allocation.getSubCategory().getBusinessId()
                 : null;
         return allocation.getCategory().getBusinessId() + "::" + subCategoryId;
-    }
-
-    private NotFoundException generateNotFoundException(String resource, String id) {
-        return new NotFoundException(resource + " with id '" + id + "' not found.");
     }
 }
