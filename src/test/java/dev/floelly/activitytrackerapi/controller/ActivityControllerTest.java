@@ -328,7 +328,9 @@ class ActivityControllerTest {
                                     "categoryId": "1234567891230",
                                     "subCategoryId": "1234567891231"
                                 }
-                            ]
+                            ],
+                            "customValues": [],
+                            "tagIds": []
                         }
                         """, activityId)));
 
@@ -361,7 +363,9 @@ class ActivityControllerTest {
                             "notes": null,
                             "startAt": "2024-01-01T10:00:00Z",
                             "endAt": "2024-01-01T11:00:00Z",
-                            "categoryAllocations": []
+                            "categoryAllocations": [],
+                            "customValues": [],
+                            "tagIds": []
                         }
                         """, activityId)));
 
@@ -416,7 +420,9 @@ class ActivityControllerTest {
                                     "notes": null,
                                     "startAt": "2024-01-01T10:00:00Z",
                                     "endAt": "2024-01-01T11:00:00Z",
-                                    "categoryAllocations": []
+                                    "categoryAllocations": [],
+                                    "customValues": [],
+                                    "tagIds": []
                                 }
                                 """, activityId)))
                 .andExpect(status().isOk())

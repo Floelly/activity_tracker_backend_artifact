@@ -419,6 +419,8 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -438,6 +440,8 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -463,7 +467,9 @@ class ActivityServiceTest {
                 List.of(
                         new CreateCategoryAllocationRequest(60, "cat-1", null),
                         new CreateCategoryAllocationRequest(30, "cat-2", null)
-                )
+                ),
+                List.of(),
+                List.of()
         );
 
         assertThatThrownBy(() -> service.updateActivity(businessId, request))
@@ -485,7 +491,9 @@ class ActivityServiceTest {
                 List.of(
                         new CreateCategoryAllocationRequest(50, "cat-1", "sub-cat-1"),
                         new CreateCategoryAllocationRequest(50, "cat-1", "sub-cat-1")
-                )
+                ),
+                List.of(),
+                List.of()
         );
 
         assertThatThrownBy(() -> service.updateActivity(businessId, request))
@@ -508,6 +516,8 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -544,7 +554,9 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null))
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null)),
+                List.of(),
+                List.of()
         );
 
         ActivityResponse response = mock(ActivityResponse.class);
@@ -590,7 +602,9 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null))
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null)),
+                List.of(),
+                List.of()
         );
 
         ActivityResponse response = mock(ActivityResponse.class);
@@ -603,6 +617,179 @@ class ActivityServiceTest {
         assertThat(result).isSameAs(response);
         assertThat(activity.getCategoryAllocations()).hasSize(1);
         assertThat(existingAllocation.getPercentage()).isEqualTo(100);
+    }
+
+    @Test
+    void updateActivity_shouldUpdateTagsWhenProvided() {
+        String businessId = "act-1";
+
+        Tag existingTag = new Tag();
+        existingTag.setBusinessId("tag-1");
+        existingTag.setLabel("Tag 1");
+
+        Tag newTag = new Tag();
+        newTag.setBusinessId("tag-2");
+        newTag.setLabel("Tag 2");
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>());
+        activity.setAttributes(new HashSet<>());
+        activity.setTags(new HashSet<>(Set.of(existingTag)));
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
+                List.of("tag-1", "tag-2")
+        );
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(tagRepository.findByBusinessIdIn(request.tagIds())).thenReturn(Set.of(existingTag, newTag));
+        when(responseMapper.toResponse(activity)).thenReturn(mock(ActivityResponse.class));
+
+        service.updateActivity(businessId, request);
+
+        assertThat(activity.getTags()).containsExactlyInAnyOrder(existingTag, newTag);
+    }
+
+    @Test
+    void updateActivity_shouldUpdateCustomValuesWhenProvided() {
+        String businessId = "act-1";
+
+        ActivityAttribute existingAttribute = new ActivityAttribute();
+        existingAttribute.setLabel("weight");
+        existingAttribute.setValue("80");
+        existingAttribute.setShowInOverview(true);
+        existingAttribute.setSortOrder(0);
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>());
+        activity.setTags(new HashSet<>());
+        activity.setAttributes(new HashSet<>(Set.of(existingAttribute)));
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(
+                        new CreateActivityAttributeRequest("weight", "81", true, 0),
+                        new CreateActivityAttributeRequest("height", "180", false, 1)
+                ),
+                List.of()
+        );
+
+        ActivityResponse response = mock(ActivityResponse.class);
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(commandMapper.toEntity(any(CreateActivityAttributeRequest.class))).thenAnswer(invocation -> {
+            CreateActivityAttributeRequest source = invocation.getArgument(0);
+            ActivityAttribute attribute = new ActivityAttribute();
+            attribute.setLabel(source.key());
+            attribute.setValue(source.value());
+            attribute.setShowInOverview(source.showInOverview());
+            attribute.setSortOrder(source.sortOrder());
+            return attribute;
+        });
+        when(responseMapper.toResponse(activity)).thenReturn(response);
+
+        service.updateActivity(businessId, request);
+
+        assertThat(activity.getAttributes()).hasSize(2);
+        assertThat(activity.getAttributes().stream().map(ActivityAttribute::getLabel))
+                .containsExactlyInAnyOrder("weight", "height");
+    }
+
+    @Test
+    void updateActivity_shouldRemoveTags_onUpdateRequest() {
+        String businessId = "act-1";
+
+        Tag tag1 = new Tag();
+        tag1.setBusinessId("tag-1");
+        tag1.setLabel("Tag 1");
+
+        Tag tag2 = new Tag();
+        tag2.setBusinessId("tag-2");
+        tag2.setLabel("Tag 2");
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>());
+        activity.setAttributes(new HashSet<>());
+        activity.setTags(new HashSet<>(Set.of(tag1, tag2)));
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
+                List.of("tag-1")
+        );
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(tagRepository.findByBusinessIdIn(request.tagIds())).thenReturn(Set.of(tag1));
+        when(responseMapper.toResponse(activity)).thenReturn(mock(ActivityResponse.class));
+
+        service.updateActivity(businessId, request);
+
+        assertThat(activity.getTags()).containsExactly(tag1);
+    }
+
+    @Test
+    void updateActivity_shouldRemoveCustomValues_onUpdateRequest() {
+        String businessId = "act-1";
+
+        ActivityAttribute weight = new ActivityAttribute();
+        weight.setLabel("weight");
+        weight.setValue("80");
+
+        ActivityAttribute height = new ActivityAttribute();
+        height.setLabel("height");
+        height.setValue("180");
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>());
+        activity.setTags(new HashSet<>());
+        activity.setAttributes(new HashSet<>(Set.of(weight, height)));
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(new CreateActivityAttributeRequest("weight", "80", true, 0)),
+                List.of()
+        );
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(commandMapper.toEntity(any(CreateActivityAttributeRequest.class))).thenAnswer(invocation -> {
+            CreateActivityAttributeRequest source = invocation.getArgument(0);
+            ActivityAttribute attribute = new ActivityAttribute();
+            attribute.setLabel(source.key());
+            attribute.setValue(source.value());
+            attribute.setShowInOverview(source.showInOverview());
+            attribute.setSortOrder(source.sortOrder());
+            return attribute;
+        });
+        when(responseMapper.toResponse(activity)).thenReturn(mock(ActivityResponse.class));
+
+        service.updateActivity(businessId, request);
+
+        assertThat(activity.getAttributes()).hasSize(1);
+        assertThat(activity.getAttributes().iterator().next().getLabel()).isEqualTo("weight");
     }
 
     @Test
@@ -632,7 +819,9 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "cat-new", null))
+                List.of(new CreateCategoryAllocationRequest(100, "cat-new", null)),
+                List.of(),
+                List.of()
         );
 
         CategoryAllocation newAllocation = new CategoryAllocation();
@@ -666,7 +855,9 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null))
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null)),
+                List.of(),
+                List.of()
         );
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
@@ -700,7 +891,9 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "cat-1", "sub-1"))
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", "sub-1")),
+                List.of(),
+                List.of()
         );
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));

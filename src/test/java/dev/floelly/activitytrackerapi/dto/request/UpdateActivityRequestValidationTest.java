@@ -40,11 +40,9 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(
-                        100,
-                        "0123456789ABC",
-                        null)
-                )
+                List.of(new CreateCategoryAllocationRequest(100, "0123456789ABC", null)),
+                List.of(new CreateActivityAttributeRequest("distance", "10km", true, 0)),
+                List.of("0123456789ABD")
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -60,11 +58,9 @@ class UpdateActivityRequestValidationTest {
                 null,
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(
-                        100,
-                        "0123456789ABC",
-                        null)
-                )
+                List.of(new CreateCategoryAllocationRequest(100, "0123456789ABC", null)),
+                List.of(),
+                List.of()
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -80,6 +76,8 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -96,6 +94,8 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -115,6 +115,8 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -133,6 +135,8 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -151,6 +155,8 @@ class UpdateActivityRequestValidationTest {
                 "A".repeat(257),
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -169,6 +175,8 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 null,
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -187,6 +195,8 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T09:00:00Z"),
                 null,
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -205,6 +215,8 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T09:02:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -223,7 +235,9 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T09:01:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                null
+                null,
+                List.of(),
+                List.of()
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);

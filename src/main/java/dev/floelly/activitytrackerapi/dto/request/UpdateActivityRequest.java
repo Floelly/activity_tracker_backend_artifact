@@ -29,12 +29,12 @@ public record UpdateActivityRequest(
         Instant endAt,
 
         @NotNull
-        List<@NotNull @Valid CreateCategoryAllocationRequest> categoryAllocations
+        List<@NotNull @Valid CreateCategoryAllocationRequest> categoryAllocations,
 
-//        @NotNull
-//        List<@Valid CreateActivityAttributeRequest> customValues,
-//
-//        @NotNull
-//        List<@ValidTSID String> tagIds
+        @NotNull
+        List<@NotNull @Valid CreateActivityAttributeRequest> customValues,
+
+        @NotNull
+        List<@NotNull @ValidTSID String> tagIds
 ) implements TimeRangeRequest {
 }
