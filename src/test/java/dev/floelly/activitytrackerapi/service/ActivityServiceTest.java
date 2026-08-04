@@ -713,4 +713,42 @@ class ActivityServiceTest {
                 .hasMessageContaining("SubCategory")
                 .hasMessageContaining("is not related to Category");
     }
+
+    @Test
+    void mergeCategoryAllocations_shouldNotCrashOnNewActivityCollections() {
+        String businessId = "act-1";
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+
+        Category category = new Category();
+        category.setBusinessId("cat-1");
+        category.setName("Sport");
+
+        CategoryAllocation mappedAllocation = new CategoryAllocation();
+        mappedAllocation.setPercentage(100);
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Title",
+                "Notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null))
+        );
+
+        ActivityResponse response = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
+        when(commandMapper.toEntity(any(CreateCategoryAllocationRequest.class))).thenReturn(mappedAllocation);
+        when(responseMapper.toResponse(activity)).thenReturn(response);
+
+        ActivityResponse result = service.updateActivity(businessId, request);
+
+        assertThat(result).isSameAs(response);
+        assertThat(activity.getCategoryAllocations()).hasSize(1);
+        assertThat(mappedAllocation.getActivity()).isSameAs(activity);
+        assertThat(mappedAllocation.getCategory()).isSameAs(category);
+    }
 }
