@@ -419,6 +419,7 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
                 List.of()
         );
 
@@ -438,6 +439,7 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
                 List.of()
         );
 
@@ -463,7 +465,8 @@ class ActivityServiceTest {
                 List.of(
                         new CreateCategoryAllocationRequest(60, "cat-1", null),
                         new CreateCategoryAllocationRequest(30, "cat-2", null)
-                )
+                ),
+                List.of()
         );
 
         assertThatThrownBy(() -> service.updateActivity(businessId, request))
@@ -485,7 +488,8 @@ class ActivityServiceTest {
                 List.of(
                         new CreateCategoryAllocationRequest(50, "cat-1", "sub-cat-1"),
                         new CreateCategoryAllocationRequest(50, "cat-1", "sub-cat-1")
-                )
+                ),
+                List.of()
         );
 
         assertThatThrownBy(() -> service.updateActivity(businessId, request))
@@ -508,6 +512,7 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
                 List.of()
         );
 
@@ -544,7 +549,8 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null))
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null)),
+                List.of()
         );
 
         ActivityResponse response = mock(ActivityResponse.class);
@@ -590,7 +596,8 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null))
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null)),
+                List.of()
         );
 
         ActivityResponse response = mock(ActivityResponse.class);
@@ -603,6 +610,122 @@ class ActivityServiceTest {
         assertThat(result).isSameAs(response);
         assertThat(activity.getCategoryAllocations()).hasSize(1);
         assertThat(existingAllocation.getPercentage()).isEqualTo(100);
+    }
+
+    @Test
+    void updateActivity_shouldInitializeAndAddCustomValuesWhenActivityHasNoAttributes() {
+        String businessId = "act-1";
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>());
+        activity.setAttributes(null);
+
+        CreateActivityAttributeRequest attributeRequest = new CreateActivityAttributeRequest("pace", "5:00", true, 1);
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(attributeRequest)
+        );
+
+        ActivityAttribute mappedAttribute = new ActivityAttribute();
+        mappedAttribute.setLabel("pace");
+        mappedAttribute.setValue("5:00");
+        mappedAttribute.setShowInOverview(true);
+        mappedAttribute.setSortOrder(1);
+
+        ActivityResponse response = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(commandMapper.toEntity(attributeRequest)).thenReturn(mappedAttribute);
+        when(responseMapper.toResponse(activity)).thenReturn(response);
+
+        ActivityResponse result = service.updateActivity(businessId, request);
+
+        assertThat(result).isSameAs(response);
+        assertThat(activity.getAttributes()).hasSize(1);
+        ActivityAttribute added = activity.getAttributes().iterator().next();
+        assertThat(added).isSameAs(mappedAttribute);
+        assertThat(added.getActivity()).isSameAs(activity);
+        assertThat(added.getLabel()).isEqualTo("pace");
+    }
+
+    @Test
+    void updateActivity_shouldUpdateExistingCustomValueMatchingByKey() {
+        String businessId = "act-1";
+
+        ActivityAttribute existing = new ActivityAttribute();
+        existing.setLabel("pace");
+        existing.setValue("5:30");
+        existing.setShowInOverview(false);
+        existing.setSortOrder(0);
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>());
+        activity.setAttributes(new HashSet<>(Set.of(existing)));
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of(new CreateActivityAttributeRequest("pace", "4:45", true, 3))
+        );
+
+        ActivityResponse response = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(responseMapper.toResponse(activity)).thenReturn(response);
+
+        ActivityResponse result = service.updateActivity(businessId, request);
+
+        assertThat(result).isSameAs(response);
+        assertThat(activity.getAttributes()).hasSize(1);
+        assertThat(existing.getValue()).isEqualTo("4:45");
+        assertThat(existing.isShowInOverview()).isTrue();
+        assertThat(existing.getSortOrder()).isEqualTo(3);
+        verify(commandMapper, never()).toEntity(any(CreateActivityAttributeRequest.class));
+    }
+
+    @Test
+    void updateActivity_shouldRemoveCustomValuesNotPresentInRequest() {
+        String businessId = "act-1";
+
+        ActivityAttribute toRemove = new ActivityAttribute();
+        toRemove.setLabel("obsolete");
+        toRemove.setValue("old");
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>());
+        activity.setAttributes(new HashSet<>(Set.of(toRemove)));
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                List.of()
+        );
+
+        ActivityResponse response = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(responseMapper.toResponse(activity)).thenReturn(response);
+
+        ActivityResponse result = service.updateActivity(businessId, request);
+
+        assertThat(result).isSameAs(response);
+        assertThat(activity.getAttributes()).isEmpty();
     }
 
     @Test
@@ -632,7 +755,8 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "cat-new", null))
+                List.of(new CreateCategoryAllocationRequest(100, "cat-new", null)),
+                List.of()
         );
 
         CategoryAllocation newAllocation = new CategoryAllocation();
@@ -666,7 +790,8 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null))
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null)),
+                List.of()
         );
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
@@ -700,7 +825,8 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "cat-1", "sub-1"))
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", "sub-1")),
+                List.of()
         );
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));

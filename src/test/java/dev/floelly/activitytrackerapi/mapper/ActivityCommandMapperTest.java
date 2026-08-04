@@ -151,7 +151,8 @@ class ActivityCommandMapperTest {
                 "Some new notes\n\n\n",
                 Instant.parse("2023-01-03T00:00:00Z"),
                 Instant.parse("2023-01-03T01:00:00Z"),
-                List.of(new CreateCategoryAllocationRequest(100, "ignored-anyways", null))
+                List.of(new CreateCategoryAllocationRequest(100, "ignored-anyways", null)),
+                List.of(new CreateActivityAttributeRequest("ignored-key", "ignored-value", true, 0))
         );
         Activity activity = new Activity(
                 1L,

@@ -44,7 +44,8 @@ class UpdateActivityRequestValidationTest {
                         100,
                         "0123456789ABC",
                         null)
-                )
+                ),
+                List.of(new CreateActivityAttributeRequest("distance", "10km", true, 0))
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -64,7 +65,8 @@ class UpdateActivityRequestValidationTest {
                         100,
                         "0123456789ABC",
                         null)
-                )
+                ),
+                List.of(new CreateActivityAttributeRequest("distance", "10km", true, 0))
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -80,6 +82,7 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
                 List.of()
         );
 
@@ -96,6 +99,7 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
                 List.of()
         );
 
@@ -115,6 +119,7 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
                 List.of()
         );
 
@@ -133,6 +138,7 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
                 List.of()
         );
 
@@ -151,6 +157,7 @@ class UpdateActivityRequestValidationTest {
                 "A".repeat(257),
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
                 List.of()
         );
 
@@ -169,6 +176,7 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 null,
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
                 List.of()
         );
 
@@ -187,6 +195,7 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T09:00:00Z"),
                 null,
+                List.of(),
                 List.of()
         );
 
@@ -205,6 +214,7 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T09:02:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
                 List.of()
         );
 
@@ -223,7 +233,8 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T09:01:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                null
+                null,
+                List.of()
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -232,4 +243,24 @@ class UpdateActivityRequestValidationTest {
                 .extracting(v -> v.getPropertyPath().toString())
                 .contains("categoryAllocations");
     }
+
+    @Test
+    void nullCustomValues_hasViolation() {
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                "0123456789123",
+                "Some title",
+                "Some notes",
+                Instant.parse("2026-05-26T09:01:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(),
+                null
+        );
+
+        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("customValues");
+    }
 }
+

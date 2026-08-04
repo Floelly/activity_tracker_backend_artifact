@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -111,7 +112,7 @@ public class ActivityService {
         Activity activity = findByBusinessId(businessId);
         commandMapper.updateEntity(activityRequest, activity);
         mergeCategoryAllocations(activity, allocationRequests);
-        // TODO: update custom values       // NOSONAR - a future implementation option
+        mergeCustomValues(activity, activityRequest.customValues());
         // TODO: update tags                // NOSONAR - a future implementation option
         activity.setUpdatedAt(Instant.now());
         return responseMapper.toResponse(activity);
@@ -174,6 +175,38 @@ public class ActivityService {
                 existing.setPercentage(allocationRequest.percentage());
             } else {
                 activity.getCategoryAllocations().add(mapRequestToCategoryAllocation(allocationRequest, activity));
+            }
+        }
+    }
+
+    @SuppressWarnings("PMD.LooseCoupling")
+    private void mergeCustomValues(Activity activity, List<CreateActivityAttributeRequest> attributeRequests) {
+        if (activity.getAttributes() == null) {
+            activity.setAttributes(new HashSet<>());
+        }
+
+        Map<String, ActivityAttribute> existingByLabel = activity.getAttributes().stream()
+                .collect(Collectors.toMap(
+                        ActivityAttribute::getLabel,
+                        Function.identity()
+                ));
+
+        List<String> requestedLabels = attributeRequests.stream()
+                .map(CreateActivityAttributeRequest::key)
+                .toList();
+
+        activity.getAttributes().removeIf(existing -> !requestedLabels.contains(existing.getLabel()));
+
+        for (CreateActivityAttributeRequest attributeRequest : attributeRequests) {
+            String label = attributeRequest.key();
+            ActivityAttribute existing = existingByLabel.get(label);
+
+            if (existing != null) {
+                existing.setValue(attributeRequest.value());
+                existing.setShowInOverview(attributeRequest.showInOverview());
+                existing.setSortOrder(attributeRequest.sortOrder());
+            } else {
+                activity.getAttributes().add(mapRequestToActivityAttribute(attributeRequest, activity));
             }
         }
     }

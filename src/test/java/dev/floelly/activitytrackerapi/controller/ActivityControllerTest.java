@@ -328,7 +328,8 @@ class ActivityControllerTest {
                                     "categoryId": "1234567891230",
                                     "subCategoryId": "1234567891231"
                                 }
-                            ]
+                            ],
+                            "customValues": []
                         }
                         """, activityId)));
 
@@ -347,6 +348,7 @@ class ActivityControllerTest {
         assertThat(dto.categoryAllocations().getFirst().percentage()).isEqualTo(100);
         assertThat(dto.categoryAllocations().getFirst().categoryId()).isEqualTo("1234567891230");
         assertThat(dto.categoryAllocations().getFirst().subCategoryId()).isEqualTo("1234567891231");
+        assertThat(dto.customValues()).isEmpty();
     }
 
     @Test
@@ -361,7 +363,8 @@ class ActivityControllerTest {
                             "notes": null,
                             "startAt": "2024-01-01T10:00:00Z",
                             "endAt": "2024-01-01T11:00:00Z",
-                            "categoryAllocations": []
+                            "categoryAllocations": [],
+                            "customValues": []
                         }
                         """, activityId)));
 
@@ -377,6 +380,7 @@ class ActivityControllerTest {
         assertThat(dto.startAt()).hasToString("2024-01-01T10:00:00Z");
         assertThat(dto.endAt()).hasToString("2024-01-01T11:00:00Z");
         assertThat(dto.categoryAllocations()).isEmpty();
+        assertThat(dto.customValues()).isEmpty();
     }
 
     @Test
@@ -416,7 +420,8 @@ class ActivityControllerTest {
                                     "notes": null,
                                     "startAt": "2024-01-01T10:00:00Z",
                                     "endAt": "2024-01-01T11:00:00Z",
-                                    "categoryAllocations": []
+                                    "categoryAllocations": [],
+                                    "customValues": []
                                 }
                                 """, activityId)))
                 .andExpect(status().isOk())
@@ -461,7 +466,8 @@ class ActivityControllerTest {
                                             "categoryId": "0456456789789",
                                             "subCategoryId": null
                                         }
-                                    ]
+                                    ],
+                                    "customValues": []
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
