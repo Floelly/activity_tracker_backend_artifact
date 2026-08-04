@@ -153,21 +153,21 @@ public class ActivityService {
 
     @SuppressWarnings("PMD.LooseCoupling")
     private void mergeCategoryAllocations(Activity activity, List<CreateCategoryAllocationRequest> allocationRequests) {
-        Map<String, CategoryAllocation> existingByKey = activity.getCategoryAllocations().stream()
+        Map<AllocationKey, CategoryAllocation> existingByKey = activity.getCategoryAllocations().stream()
                 .collect(Collectors.toMap(
-                        this::allocationKey,
+                        AllocationKey::from,
                         Function.identity()
                 ));
 
-        List<String> requestedByKey = allocationRequests.stream()
-                .map(this::allocationKey)
+        List<AllocationKey> requestedByKey = allocationRequests.stream()
+                .map(AllocationKey::from)
                 .toList();
 
         activity.getCategoryAllocations().removeIf(existing ->
-                !requestedByKey.contains(allocationKey(existing)));
+                !requestedByKey.contains(AllocationKey.from(existing)));
 
         for (CreateCategoryAllocationRequest allocationRequest : allocationRequests) {
-            String key = allocationKey(allocationRequest);
+            AllocationKey key = AllocationKey.from(allocationRequest);
             CategoryAllocation existing = existingByKey.get(key);
 
             if (existing != null) {
@@ -188,24 +188,12 @@ public class ActivityService {
 
     private void validateAllocations(List<CreateCategoryAllocationRequest> allocationRequests) {
         long distinctCount = allocationRequests.stream()
-                .map(this::allocationKey)
+                .map(AllocationKey::from)
                 .distinct()
                 .count();
         if (distinctCount != allocationRequests.size()) {
             throw new BadRequestException("Duplicate category allocation keys found.");
         }
-    }
-
-    private String allocationKey(CreateCategoryAllocationRequest request) {
-        return request.categoryId() + "::" + request.subCategoryId();
-    }
-
-    @SuppressWarnings("PMD.UnusedPrivateMethod")
-    private String allocationKey(CategoryAllocation allocation) {
-        String subCategoryId = allocation.getSubCategory() != null
-                ? allocation.getSubCategory().getBusinessId()
-                : null;
-        return allocation.getCategory().getBusinessId() + "::" + subCategoryId;
     }
 
     private NotFoundException generateNotFoundException(String resource, String id) {
