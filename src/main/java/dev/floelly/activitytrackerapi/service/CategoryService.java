@@ -9,9 +9,7 @@ import dev.floelly.activitytrackerapi.dto.response.SubCategoriesResponse;
 import dev.floelly.activitytrackerapi.dto.response.SubCategoryResponse;
 import dev.floelly.activitytrackerapi.entity.Category;
 import dev.floelly.activitytrackerapi.entity.SubCategory;
-import dev.floelly.activitytrackerapi.exception.BadRequestException;
-import dev.floelly.activitytrackerapi.exception.EntityDeletionConflictException;
-import dev.floelly.activitytrackerapi.exception.NotFoundException;
+import dev.floelly.activitytrackerapi.exception.ExceptionFactory;
 import dev.floelly.activitytrackerapi.mapper.CategoryCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.CategoryResponseMapper;
 import dev.floelly.activitytrackerapi.mapper.SubCategoryCommandMapper;
@@ -59,7 +57,7 @@ public class CategoryService {
     @Transactional
     public CategoryResponse updateCategory(String categoryId, UpdateCategoryRequest categoryRequest) {
         if (!categoryRequest.id().equals(categoryId)) {
-            throw new BadRequestException("Category id in request does not match the path variable");
+            throw ExceptionFactory.badRequestIdMismatch("Category");
         }
         Category category = findCategoryByBusinessId(categoryId);
         categoryCommandMapper.updateEntity(categoryRequest, category);
@@ -96,20 +94,18 @@ public class CategoryService {
 
     private Category findCategoryByBusinessId(String businessId) {
         return categoryRepository.findByBusinessId(businessId)
-                .orElseThrow(() -> new NotFoundException("Category not found " + businessId));
+                .orElseThrow(() -> ExceptionFactory.categoryNotFound(businessId));
     }
 
     private void assertNoActivitiesAssignedToCategory(Category category) {
         if (categoryAllocationRepository.existsByCategory(category)) {
-            throw new EntityDeletionConflictException("Category '" + category.getName() + "' (id: " + category.getBusinessId()
-                    + ") has activities assigned to it.");
+            throw ExceptionFactory.entityDeletionConflictCategoryHasActivities(category.getName(), category.getBusinessId());
         }
     }
 
     private void assertNoSubCategoriesAssignedToCategory(Category category) {
         if (subCategoryRepository.existsByCategory(category)) {
-            throw new EntityDeletionConflictException("Category '" + category.getName() + "' (id: " + category.getBusinessId()
-                    + ") has sub categories assigned to it.");
+            throw ExceptionFactory.entityDeletionConflictCategoryHasSubCategories(category.getName(), category.getBusinessId());
         }
     }
 }

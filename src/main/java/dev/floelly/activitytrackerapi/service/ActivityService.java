@@ -13,8 +13,7 @@ import dev.floelly.activitytrackerapi.entity.Category;
 import dev.floelly.activitytrackerapi.entity.CategoryAllocation;
 import dev.floelly.activitytrackerapi.entity.SubCategory;
 import dev.floelly.activitytrackerapi.entity.Tag;
-import dev.floelly.activitytrackerapi.exception.BadRequestException;
-import dev.floelly.activitytrackerapi.exception.NotFoundException;
+import dev.floelly.activitytrackerapi.exception.ExceptionFactory;
 import dev.floelly.activitytrackerapi.mapper.ActivityCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.ActivityResponseMapper;
 import dev.floelly.activitytrackerapi.repository.ActivityRepository;
@@ -101,7 +100,7 @@ public class ActivityService {
     @Transactional
     public ActivityResponse updateActivity(String businessId, UpdateActivityRequest activityRequest) {
         if (!activityRequest.id().equals(businessId)) {
-            throw new BadRequestException("Activity id in request does not match the path variable");
+            throw ExceptionFactory.badRequestIdMismatch("Activity");
         }
         List<CreateCategoryAllocationRequest> allocationRequests = activityRequest.categoryAllocations();
         if (!allocationRequests.isEmpty()) {
@@ -119,7 +118,7 @@ public class ActivityService {
 
     private Activity findByBusinessId(String businessId) {
         return repository.findByBusinessId(businessId)
-                .orElseThrow(() -> generateNotFoundException("Activity", businessId));
+                .orElseThrow(() -> ExceptionFactory.notFound("Activity", businessId));
     }
 
     private ActivityAttribute mapRequestToActivityAttribute(CreateActivityAttributeRequest attributeRequest, Activity activity) {
@@ -132,15 +131,15 @@ public class ActivityService {
         String categoryBusinessId = request.categoryId();
         String subCategoryBusinessId = request.subCategoryId();
         Category category = categoryRepository.findByBusinessId(categoryBusinessId)
-                .orElseThrow(() -> generateNotFoundException("Category", categoryBusinessId));
+                .orElseThrow(() -> ExceptionFactory.notFound("Category", categoryBusinessId));
         SubCategory subCategory = null;
         if (subCategoryBusinessId != null) {
             subCategory = subCategoryRepository.findByBusinessId(subCategoryBusinessId)
-                    .orElseThrow(() -> generateNotFoundException("SubCategory", subCategoryBusinessId));
+                    .orElseThrow(() -> ExceptionFactory.notFound("SubCategory", subCategoryBusinessId));
             if (!categoryService.isValidCategorySubCategoryRelation(category, subCategory)) {
-                throw new BadRequestException("SubCategory '" + subCategory.getName()
-                        + "' (id: " + subCategory.getBusinessId() + ") is not related to Category '" + category.getName()
-                        + "' (id: " + category.getBusinessId() + ").");
+                throw ExceptionFactory.badRequestSubCategoryNotRelated(
+                        subCategory.getName(), subCategory.getBusinessId(),
+                        category.getName(), category.getBusinessId());
             }
         }
 
@@ -182,7 +181,7 @@ public class ActivityService {
         int percentageSum = allocations.stream()
                 .mapToInt(CreateCategoryAllocationRequest::percentage).sum();
         if (percentageSum != 100) {
-            throw new BadRequestException("Sum of category allocations must be 100%");
+            throw ExceptionFactory.badRequestAllocationSumNot100();
         }
     }
 
@@ -192,7 +191,7 @@ public class ActivityService {
                 .distinct()
                 .count();
         if (distinctCount != allocationRequests.size()) {
-            throw new BadRequestException("Duplicate category allocation keys found.");
+            throw ExceptionFactory.badRequestDuplicateAllocationKeys();
         }
     }
 
@@ -208,7 +207,4 @@ public class ActivityService {
         return allocation.getCategory().getBusinessId() + "::" + subCategoryId;
     }
 
-    private NotFoundException generateNotFoundException(String resource, String id) {
-        return new NotFoundException(resource + " with id '" + id + "' not found.");
-    }
 }
