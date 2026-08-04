@@ -6,11 +6,11 @@ import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
 import dev.floelly.activitytrackerapi.entity.*;
 import dev.floelly.activitytrackerapi.exception.BadRequestException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
+import dev.floelly.activitytrackerapi.mapper.ActivityAttributeMapper;
 import dev.floelly.activitytrackerapi.mapper.ActivityCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.ActivityResponseMapper;
+import dev.floelly.activitytrackerapi.mapper.CategoryAllocationMapper;
 import dev.floelly.activitytrackerapi.repository.ActivityRepository;
-import dev.floelly.activitytrackerapi.repository.CategoryRepository;
-import dev.floelly.activitytrackerapi.repository.SubCategoryRepository;
 import dev.floelly.activitytrackerapi.repository.TagRepository;
 import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.Test;
@@ -39,11 +39,9 @@ class ActivityServiceTest {
     @Mock
     private ActivityResponseMapper responseMapper;
     @Mock
-    private CategoryService categoryService;
+    private CategoryAllocationMapper categoryAllocationMapper;
     @Mock
-    private CategoryRepository categoryRepository;
-    @Mock
-    private SubCategoryRepository subCategoryRepository;
+    private ActivityAttributeMapper activityAttributeMapper;
     @Mock
     private TagRepository tagRepository;
 
@@ -198,6 +196,7 @@ class ActivityServiceTest {
 
         CreateActivityAttributeRequest attributeRequest = mock(CreateActivityAttributeRequest.class);
         ActivityAttribute attribute = new ActivityAttribute();
+        attribute.setActivity(mappedActivity);
 
         CreateCategoryAllocationRequest allocationRequest1 = mock(CreateCategoryAllocationRequest.class);
         CreateCategoryAllocationRequest allocationRequest2 = mock(CreateCategoryAllocationRequest.class);
@@ -208,8 +207,6 @@ class ActivityServiceTest {
         CategoryAllocation allocation2 = new CategoryAllocation();
         allocation2.setPercentage(10);
 
-        Category category1 = new Category();
-        SubCategory subCategory1 = new SubCategory();
         Tag tag = new Tag();
 
         when(commandMapper.toEntity(request)).thenReturn(mappedActivity);
@@ -227,14 +224,10 @@ class ActivityServiceTest {
         when(tsidFactory.generate()).thenReturn(tsid);
         when(tsid.toString()).thenReturn("act-tsid");
 
-        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category1));
-        when(categoryRepository.findByBusinessId("cat-2")).thenReturn(Optional.of(new Category()));
-        when(subCategoryRepository.findByBusinessId("sub-1")).thenReturn(Optional.of(subCategory1));
-        when(commandMapper.toEntity(allocationRequest1)).thenReturn(allocation1);
-        when(commandMapper.toEntity(allocationRequest2)).thenReturn(allocation2);
-        when(categoryService.isValidCategorySubCategoryRelation(category1, subCategory1)).thenReturn(true);
+        when(categoryAllocationMapper.toEntity(allocationRequest1, mappedActivity)).thenReturn(allocation1);
+        when(categoryAllocationMapper.toEntity(allocationRequest2, mappedActivity)).thenReturn(allocation2);
 
-        when(commandMapper.toEntity(attributeRequest)).thenReturn(attribute);
+        when(activityAttributeMapper.toEntity(attributeRequest, mappedActivity)).thenReturn(attribute);
 
         when(tagRepository.findByBusinessIdIn(request.tagIds())).thenReturn(Set.of(tag));
         when(responseMapper.toResponse(mappedActivity)).thenReturn(expected);
@@ -304,7 +297,8 @@ class ActivityServiceTest {
         when(allocationRequest.subCategoryId()).thenReturn(null);
         when(allocationRequest.percentage()).thenReturn(100);
 
-        when(categoryRepository.findByBusinessId("missing-cat")).thenReturn(Optional.empty());
+        when(categoryAllocationMapper.toEntity(allocationRequest, mappedActivity))
+                .thenThrow(new NotFoundException("Category with id 'missing-cat' not found."));
 
         TSID tsid = mock(TSID.class);
         when(tsidFactory.generate()).thenReturn(tsid);
@@ -331,8 +325,8 @@ class ActivityServiceTest {
         when(allocationRequest.subCategoryId()).thenReturn("missing-sub-cat");
         when(allocationRequest.percentage()).thenReturn(100);
 
-        when(categoryRepository.findByBusinessId("known-cat")).thenReturn(Optional.of(new Category()));
-        when(subCategoryRepository.findByBusinessId("missing-sub-cat")).thenReturn(Optional.empty());
+        when(categoryAllocationMapper.toEntity(allocationRequest, mappedActivity))
+                .thenThrow(new NotFoundException("SubCategory with id 'missing-sub-cat' not found."));
 
         TSID tsid = mock(TSID.class);
         when(tsidFactory.generate()).thenReturn(tsid);
@@ -352,14 +346,6 @@ class ActivityServiceTest {
         Activity mappedActivity = new Activity();
         CreateCategoryAllocationRequest allocationRequest = mock(CreateCategoryAllocationRequest.class);
 
-        Category category = new Category();
-        category.setBusinessId("cat-1");
-        category.setName("Category A");
-
-        SubCategory subCategory = new SubCategory();
-        subCategory.setBusinessId("sub-1");
-        subCategory.setName("Sub A");
-
         CategoryAllocation allocation = new CategoryAllocation();
         allocation.setPercentage(100);
 
@@ -369,9 +355,8 @@ class ActivityServiceTest {
         when(allocationRequest.subCategoryId()).thenReturn("sub-1");
         when(allocationRequest.percentage()).thenReturn(100);
 
-        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
-        when(subCategoryRepository.findByBusinessId("sub-1")).thenReturn(Optional.of(subCategory));
-        when(categoryService.isValidCategorySubCategoryRelation(category, subCategory)).thenReturn(false);
+        when(categoryAllocationMapper.toEntity(allocationRequest, mappedActivity))
+                .thenThrow(new BadRequestException("SubCategory 'Sub A' (id: sub-1) is not related to Category 'Category A' (id: cat-1)."));
 
         TSID tsid = mock(TSID.class);
         when(tsidFactory.generate()).thenReturn(tsid);
@@ -550,10 +535,12 @@ class ActivityServiceTest {
         ActivityResponse response = mock(ActivityResponse.class);
         CategoryAllocation mappedAllocation = new CategoryAllocation();
         mappedAllocation.setPercentage(100);
+        mappedAllocation.setActivity(activity);
+        mappedAllocation.setCategory(category);
+        mappedAllocation.setSubCategory(null);
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
-        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
-        when(commandMapper.toEntity(any(CreateCategoryAllocationRequest.class))).thenReturn(mappedAllocation);
+        when(categoryAllocationMapper.toEntity(any(CreateCategoryAllocationRequest.class), eq(activity))).thenReturn(mappedAllocation);
         when(responseMapper.toResponse(activity)).thenReturn(response);
 
         ActivityResponse result = service.updateActivity(businessId, request);
@@ -637,12 +624,12 @@ class ActivityServiceTest {
 
         CategoryAllocation newAllocation = new CategoryAllocation();
         newAllocation.setPercentage(100);
+        newAllocation.setCategory(newCategory);
 
         ActivityResponse response = mock(ActivityResponse.class);
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
-        when(categoryRepository.findByBusinessId("cat-new")).thenReturn(Optional.of(newCategory));
-        when(commandMapper.toEntity(any(CreateCategoryAllocationRequest.class))).thenReturn(newAllocation);
+        when(categoryAllocationMapper.toEntity(any(CreateCategoryAllocationRequest.class), eq(activity))).thenReturn(newAllocation);
         when(responseMapper.toResponse(activity)).thenReturn(response);
 
         service.updateActivity(businessId, request);
@@ -670,7 +657,8 @@ class ActivityServiceTest {
         );
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
-        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.empty());
+        when(categoryAllocationMapper.toEntity(any(CreateCategoryAllocationRequest.class), eq(activity)))
+                .thenThrow(new NotFoundException("Category with id 'cat-1' not found."));
 
         assertThatThrownBy(() -> service.updateActivity(businessId, request))
                 .isInstanceOf(NotFoundException.class)
@@ -686,14 +674,6 @@ class ActivityServiceTest {
         activity.setBusinessId(businessId);
         activity.setCategoryAllocations(new HashSet<>());
 
-        Category category = new Category();
-        category.setBusinessId("cat-1");
-        category.setName("Sport");
-
-        SubCategory subCategory = new SubCategory();
-        subCategory.setBusinessId("sub-1");
-        subCategory.setName("Run");
-
         UpdateActivityRequest request = new UpdateActivityRequest(
                 businessId,
                 "Updated title",
@@ -704,9 +684,8 @@ class ActivityServiceTest {
         );
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
-        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
-        when(subCategoryRepository.findByBusinessId("sub-1")).thenReturn(Optional.of(subCategory));
-        when(categoryService.isValidCategorySubCategoryRelation(category, subCategory)).thenReturn(false);
+        when(categoryAllocationMapper.toEntity(any(CreateCategoryAllocationRequest.class), eq(activity)))
+                .thenThrow(new BadRequestException("SubCategory 'Run' (id: sub-1) is not related to Category 'Sport' (id: cat-1)."));
 
         assertThatThrownBy(() -> service.updateActivity(businessId, request))
                 .isInstanceOf(BadRequestException.class)
