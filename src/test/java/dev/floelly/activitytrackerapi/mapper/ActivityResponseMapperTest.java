@@ -231,6 +231,62 @@ class ActivityResponseMapperTest {
     }
 
     @Test
+    void toActivitiesResponse_shouldSortMutableList() {
+        Activity activity1 = new Activity(
+                1L,
+                "id-1",
+                "title-1",
+                "notes",
+                Instant.parse("2023-01-02T00:00:00Z"),
+                Instant.parse("2023-01-02T00:01:00Z"),
+                Set.of(),
+                Set.of(),
+                Set.of(),
+                Instant.now(),
+                null
+        );
+        Activity activity2 = new Activity(
+                1L,
+                "id-1",
+                "title-1",
+                "notes",
+                Instant.parse("2023-01-03T00:00:00Z"),
+                Instant.parse("2023-01-03T00:01:00Z"),
+                Set.of(),
+                Set.of(),
+                Set.of(),
+                Instant.now(),
+                null
+        );
+        Activity activity3 = new Activity(
+                1L,
+                "id-3",
+                "title-3",
+                "notes",
+                Instant.parse("2023-01-01T00:00:00Z"),
+                Instant.parse("2023-01-01T00:01:00Z"),
+                Set.of(),
+                Set.of(),
+                Set.of(),
+                Instant.now(),
+                null
+        );
+
+        ActivitiesResponse response = mapper.toActivitiesResponse(List.of(activity1, activity2, activity3));
+
+        assertThat(response).isNotNull();
+        assertThat(response.activities()).isNotEmpty();
+        assertThat(response.activities()).hasSize(3);
+        assertThat(response.activities().stream().map(ActivityResponse::startAt))
+                .containsExactly(
+                        Instant.parse("2023-01-01T00:00:00Z"),
+                        Instant.parse("2023-01-02T00:00:00Z"),
+                        Instant.parse("2023-01-03T00:00:00Z")
+                );
+
+    }
+
+    @Test
     void toActivitiesResponse_shouldSortActivitiesByStartTime() {
         Activity activity1 = new Activity(
                 1L,
@@ -266,7 +322,20 @@ class ActivityResponseMapperTest {
         assertThat(response.activities()).hasSize(2);
         assertThat(response.activities().stream().map(ActivityResponse::startAt))
                 .containsExactly(Instant.parse("2023-01-02T00:00:00Z"), Instant.parse("2023-01-03T00:00:00Z"));
+    }
 
+    @Test
+    void toActivitiesResponse_shouldHandleNullAndEmptyLists() {
+        ActivitiesResponse nullInputResponse = mapper.toActivitiesResponse(null);
+        ActivitiesResponse emptyInputResponse = mapper.toActivitiesResponse(List.of());
+
+        assertThat(nullInputResponse).isNotNull();
+        assertThat(nullInputResponse.hasMore()).isFalse();
+        assertThat(nullInputResponse.activities()).isEmpty();
+
+        assertThat(emptyInputResponse).isNotNull();
+        assertThat(emptyInputResponse.hasMore()).isFalse();
+        assertThat(emptyInputResponse.activities()).isEmpty();
     }
 
     @Test
@@ -276,8 +345,4 @@ class ActivityResponseMapperTest {
         assertThat(response.activities()).isEmpty();
     }
 
-    @Test
-    void toActivitiesResponse_shouldReturnNullForNullList() {
-        assertThat(mapper.toActivitiesResponse(null)).isNull();
-    }
 }
