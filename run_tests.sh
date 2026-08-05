@@ -1,0 +1,1 @@
+cd /workspace && mvn test -Dtest="dev.floelly.activitytrackerapi.service.ActivityServiceTest" -DfailIfNoTests=false 2>&1

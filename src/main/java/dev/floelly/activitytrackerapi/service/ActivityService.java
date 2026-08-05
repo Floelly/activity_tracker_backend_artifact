@@ -88,6 +88,8 @@ public class ActivityService {
         Set<Tag> tags = tagRepository.findByBusinessIdIn(activityRequest.tagIds());
         activity.setTags(tags);
 
+        validateCustomValueKeys(activityRequest.customValues());
+
         repository.save(activity);
 
         return responseMapper.toResponse(activity);
@@ -113,6 +115,7 @@ public class ActivityService {
         commandMapper.updateEntity(activityRequest, activity);
         mergeCategoryAllocations(activity, allocationRequests);
         mergeCustomValues(activity, activityRequest.customValues());
+        validateCustomValueKeys(activityRequest.customValues());
         // TODO: update tags                // NOSONAR - a future implementation option
         activity.setUpdatedAt(Instant.now());
         return responseMapper.toResponse(activity);
@@ -226,6 +229,16 @@ public class ActivityService {
                 .count();
         if (distinctCount != allocationRequests.size()) {
             throw new BadRequestException("Duplicate category allocation keys found.");
+        }
+    }
+
+    private void validateCustomValueKeys(List<CreateActivityAttributeRequest> customValues) {
+        long distinctCount = customValues.stream()
+                .map(CreateActivityAttributeRequest::key)
+                .distinct()
+                .count();
+        if (distinctCount != customValues.size()) {
+            throw new BadRequestException("Duplicate custom value keys");
         }
     }
 
