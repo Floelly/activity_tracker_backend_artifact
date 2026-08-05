@@ -25,7 +25,7 @@ import java.util.Set;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Activity {
+public class Activity extends BaseAuditEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -63,9 +63,18 @@ public class Activity {
     )
     private Set<Tag> tags;
 
-    @NotNull
-    @Column(nullable = false)
-    private Instant createdAt;
-
-    private Instant updatedAt;
+    public Activity(Long id, String businessId, String title, String notes, Instant startAt, Instant endAt,
+                    Set<CategoryAllocation> categoryAllocations, Set<ActivityAttribute> attributes, Set<Tag> tags,
+                    Instant createdAt, Instant updatedAt) {
+        super(createdAt, updatedAt);
+        this.id = id;
+        this.businessId = businessId;
+        this.title = title;
+        this.notes = notes;
+        this.startAt = startAt;
+        this.endAt = endAt;
+        this.categoryAllocations = categoryAllocations;
+        this.attributes = attributes;
+        this.tags = tags;
+    }
 }
