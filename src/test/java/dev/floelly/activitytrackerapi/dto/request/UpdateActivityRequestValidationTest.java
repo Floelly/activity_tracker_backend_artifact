@@ -53,10 +53,10 @@ class UpdateActivityRequestValidationTest {
     }
 
     @Test
-    void nullTitleAndNotes_hasNoViolations() {
+    void nullNotes_hasNoViolations() {
         UpdateActivityRequest request = new UpdateActivityRequest(
                 "0123456789ABC",
-                null,
+                "crazy Titel",
                 null,
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),

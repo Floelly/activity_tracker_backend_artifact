@@ -177,7 +177,7 @@ class ActivityControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {
-                            "title": null,
+                            "title": "crazy Title",
                             "notes": null,
                             "startAt": "2024-01-01T10:00:00Z",
                             "endAt": "2024-01-01T11:00:00Z",
@@ -193,7 +193,7 @@ class ActivityControllerTest {
         verify(activityService).registerNewActivity(captor.capture());
 
         CreateActivityRequest dto = captor.getValue();
-        assertThat(dto.title()).isNull();
+        assertThat(dto.title()).isEqualTo("crazy Title");
         assertThat(dto.notes()).isNull();
         assertThat(dto.startAt()).hasToString("2024-01-01T10:00:00Z");
         assertThat(dto.endAt()).hasToString("2024-01-01T11:00:00Z");
@@ -283,6 +283,26 @@ class ActivityControllerTest {
     }
 
     @Test
+    void postNewActivity_shouldReturnBadRequest_onNullTitle() throws Exception {
+        mockMvc.perform(post("/api/activities")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                            "title": null,
+                            "notes": null,
+                            "startAt": "2024-01-01T10:00:00Z",
+                            "endAt": "2024-01-01T11:00:00Z",
+                            "categoryAllocations": [],
+                            "customValues": [],
+                            "tagIds": []
+                        }
+                        """))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).registerNewActivity(any(CreateActivityRequest.class));
+    }
+
+    @Test
     void deleteActivity_shouldReturnNoContent_whenActivityWasDeleted() throws Exception {
         mockMvc.perform(delete("/api/activities/0123456789ABC"))
                 .andExpect(status().isNoContent())
@@ -357,7 +377,7 @@ class ActivityControllerTest {
                 .content(String.format("""
                         {
                             "id": "%s",
-                            "title": null,
+                            "title": "crazy Title",
                             "notes": null,
                             "startAt": "2024-01-01T10:00:00Z",
                             "endAt": "2024-01-01T11:00:00Z",
@@ -372,7 +392,7 @@ class ActivityControllerTest {
 
         UpdateActivityRequest dto = captor.getValue();
         assertThat(dto.id()).isEqualTo(activityId);
-        assertThat(dto.title()).isNull();
+        assertThat(dto.title()).isEqualTo("crazy Title");
         assertThat(dto.notes()).isNull();
         assertThat(dto.startAt()).hasToString("2024-01-01T10:00:00Z");
         assertThat(dto.endAt()).hasToString("2024-01-01T11:00:00Z");
@@ -464,6 +484,26 @@ class ActivityControllerTest {
                                     ]
                                 }
                                 """))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).updateActivity(anyString(), any(UpdateActivityRequest.class));
+    }
+
+    @Test
+    void updateActivity_shouldReturnBadRequest_onNullTitle() throws Exception {
+        String activityId = "0456456777777";
+        mockMvc.perform(put("/api/activities/" + activityId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("""
+                        {
+                            "id": "%s",
+                            "title": null,
+                            "notes": null,
+                            "startAt": "2024-01-01T10:00:00Z",
+                            "endAt": "2024-01-01T11:00:00Z",
+                            "categoryAllocations": []
+                        }
+                        """, activityId)))
                 .andExpect(status().isBadRequest());
 
         verify(activityService, never()).updateActivity(anyString(), any(UpdateActivityRequest.class));
