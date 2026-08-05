@@ -64,13 +64,19 @@ class CreateActivityRequestValidationTest {
     }
 
     @Test
-    void validRequestWithEmptyLists_hasNoViolations() {
+    void validRequestWithEmptyCustomValuesAndTags_hasNoViolations() {
         var request = new CreateActivityRequest(
                 "My Activity",
                 "Some notes",
                 Instant.parse("2024-01-01T10:00:00Z"),
                 Instant.parse("2024-01-01T11:00:00Z"),
-                List.of(),
+                List.of(
+                        new CreateCategoryAllocationRequest(
+                                100,
+                                "0A1B2C3D4E5F6",
+                                null
+                        )
+                ),
                 List.of(),
                 List.of()
         );
@@ -384,7 +390,7 @@ class CreateActivityRequestValidationTest {
                 validator.validate(request);
 
         assertThat(violations)
-                .extracting(ConstraintViolation::getPropertyPath)
-                .anySatisfy(path -> assertThat(path).hasToString("categoryAllocations"));
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("categoryAllocations");
     }
 }

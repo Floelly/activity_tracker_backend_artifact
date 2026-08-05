@@ -73,22 +73,6 @@ class UpdateActivityRequestValidationTest {
     }
 
     @Test
-    void emptyCategoryAllocations_hasNoViolations() {
-        UpdateActivityRequest request = new UpdateActivityRequest(
-                "0123456789ABC",
-                "Some title",
-                "Some notes",
-                Instant.parse("2026-05-26T08:00:00Z"),
-                Instant.parse("2026-05-26T09:00:00Z"),
-                List.of()
-        );
-
-        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
-
-        assertThat(violations).isEmpty();
-    }
-
-    @Test
     void nullId_hasViolation() {
         UpdateActivityRequest request = new UpdateActivityRequest(
                 null,
@@ -96,7 +80,11 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of()
+                List.of(new CreateCategoryAllocationRequest(
+                        100,
+                        "0123456789ABC",
+                        null)
+                )
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -115,7 +103,11 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of()
+                List.of(new CreateCategoryAllocationRequest(
+                        100,
+                        "0123456789ABC",
+                        null)
+                )
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -133,7 +125,11 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of()
+                List.of(new CreateCategoryAllocationRequest(
+                        100,
+                        "0123456789ABC",
+                        null)
+                )
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -151,7 +147,11 @@ class UpdateActivityRequestValidationTest {
                 "A".repeat(257),
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of()
+                List.of(new CreateCategoryAllocationRequest(
+                        100,
+                        "0123456789ABC",
+                        null)
+                )
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -169,7 +169,11 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 null,
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of()
+                List.of(new CreateCategoryAllocationRequest(
+                        100,
+                        "0123456789ABC",
+                        null)
+                )
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -187,7 +191,11 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T09:00:00Z"),
                 null,
-                List.of()
+                List.of(new CreateCategoryAllocationRequest(
+                        100,
+                        "0123456789ABC",
+                        null)
+                )
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
@@ -205,7 +213,11 @@ class UpdateActivityRequestValidationTest {
                 "Some notes",
                 Instant.parse("2026-05-26T09:02:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of()
+                List.of(new CreateCategoryAllocationRequest(
+                        100,
+                        "0123456789ABC",
+                        null)
+                )
         );
 
         Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);

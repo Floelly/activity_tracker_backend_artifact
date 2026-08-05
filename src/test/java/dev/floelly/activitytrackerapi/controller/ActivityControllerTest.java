@@ -177,29 +177,24 @@ class ActivityControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {
-                            "title": null,
-                            "notes": null,
+                            "title": "swimming",
+                            "notes": "some notes",
                             "startAt": "2024-01-01T10:00:00Z",
                             "endAt": "2024-01-01T11:00:00Z",
                             "categoryAllocations": [],
-                            "customValues": [],
+                            "customValues": [
+                                {
+                                    "percentage": 100,
+                                    "categoryId": "1234567891230",
+                                    "subCategoryId": "1234567891230"
+                                }
+                            ],
                             "tagIds": []
                         }
-                        """));
+                        """))
+                .andExpect(status().isBadRequest());
 
-        ArgumentCaptor<CreateActivityRequest> captor =
-                ArgumentCaptor.forClass(CreateActivityRequest.class);
-
-        verify(activityService).registerNewActivity(captor.capture());
-
-        CreateActivityRequest dto = captor.getValue();
-        assertThat(dto.title()).isNull();
-        assertThat(dto.notes()).isNull();
-        assertThat(dto.startAt()).hasToString("2024-01-01T10:00:00Z");
-        assertThat(dto.endAt()).hasToString("2024-01-01T11:00:00Z");
-        assertThat(dto.categoryAllocations()).isEmpty();
-        assertThat(dto.customValues()).isEmpty();
-        assertThat(dto.tagIds()).isEmpty();
+        verify(activityService, never()).registerNewActivity(any(CreateActivityRequest.class));
     }
 
     @Test
@@ -237,7 +232,13 @@ class ActivityControllerTest {
                                     "notes": null,
                                     "startAt": "2024-01-01T10:00:00Z",
                                     "endAt": "2024-01-01T11:00:00Z",
-                                    "categoryAllocations": [],
+                                    "categoryAllocations": [
+                                        {
+                                            "percentage": 100,
+                                            "categoryId": "1234567891230",
+                                            "subCategoryId": "1234567891230"
+                                        }
+                                    ],
                                     "customValues": [],
                                     "tagIds": []
                                 }
@@ -361,7 +362,13 @@ class ActivityControllerTest {
                             "notes": null,
                             "startAt": "2024-01-01T10:00:00Z",
                             "endAt": "2024-01-01T11:00:00Z",
-                            "categoryAllocations": []
+                            "categoryAllocations": [
+                                {
+                                    "percentage": 100,
+                                    "categoryId": "1234567891230",
+                                    "subCategoryId": "1234567891230"
+                                }
+                            ]
                         }
                         """, activityId)));
 
@@ -376,7 +383,7 @@ class ActivityControllerTest {
         assertThat(dto.notes()).isNull();
         assertThat(dto.startAt()).hasToString("2024-01-01T10:00:00Z");
         assertThat(dto.endAt()).hasToString("2024-01-01T11:00:00Z");
-        assertThat(dto.categoryAllocations()).isEmpty();
+        assertThat(dto.categoryAllocations()).hasSize(1);
     }
 
     @Test
@@ -416,7 +423,13 @@ class ActivityControllerTest {
                                     "notes": null,
                                     "startAt": "2024-01-01T10:00:00Z",
                                     "endAt": "2024-01-01T11:00:00Z",
-                                    "categoryAllocations": []
+                                    "categoryAllocations": [
+                                        {
+                                            "percentage": 100,
+                                            "categoryId": "1234567891230",
+                                            "subCategoryId": "1234567891230"
+                                        }
+                                    ]
                                 }
                                 """, activityId)))
                 .andExpect(status().isOk())

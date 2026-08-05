@@ -166,14 +166,25 @@ class ActivityServiceTest {
         Activity mappedActivity = new Activity();
         ActivityResponse expected = mock(ActivityResponse.class);
 
+        CreateCategoryAllocationRequest allocationRequest = mock(CreateCategoryAllocationRequest.class);
+        CategoryAllocation allocation = new CategoryAllocation();
+        allocation.setPercentage(100);
+
         when(commandMapper.toEntity(request)).thenReturn(mappedActivity);
-        when(request.categoryAllocations()).thenReturn(List.of());
+        when(request.categoryAllocations()).thenReturn(List.of(allocationRequest));
         when(request.customValues()).thenReturn(List.of());
         when(request.tagIds()).thenReturn(List.of());
+        when(allocationRequest.categoryId()).thenReturn("cat-1");
+        when(allocationRequest.subCategoryId()).thenReturn(null);
+        when(allocationRequest.percentage()).thenReturn(100);
 
         TSID tsid = mock(TSID.class);
         when(tsidFactory.generate()).thenReturn(tsid);
         when(tsid.toString()).thenReturn("act-tsid");
+
+        Category category = new Category();
+        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
+        when(commandMapper.toEntity(allocationRequest)).thenReturn(allocation);
 
         when(tagRepository.findByBusinessIdIn(argThat(Collection::isEmpty))).thenReturn(Set.of());
         when(responseMapper.toResponse(mappedActivity)).thenReturn(expected);
@@ -182,7 +193,7 @@ class ActivityServiceTest {
 
         assertThat(result).isSameAs(expected);
         assertThat(mappedActivity.getBusinessId()).isEqualTo("act-tsid");
-        assertThat(mappedActivity.getCategoryAllocations()).isEmpty();
+        assertThat(mappedActivity.getCategoryAllocations()).hasSize(1);
         assertThat(mappedActivity.getAttributes()).isEmpty();
         assertThat(mappedActivity.getTags()).isEmpty();
 
@@ -419,7 +430,9 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of()
+                List.of(
+                        new CreateCategoryAllocationRequest(100, "cat-1", null)
+                )
         );
 
         assertThatThrownBy(() -> service.updateActivity(businessId, request))
@@ -438,7 +451,9 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of()
+                List.of(
+                        new CreateCategoryAllocationRequest(100, "cat-1", null)
+                )
         );
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.empty());
@@ -496,7 +511,7 @@ class ActivityServiceTest {
     }
 
     @Test
-    void updateActivity_shouldUpdatePlainFieldsAndUpdatedAtWhenNoAllocationsProvided() {
+    void updateActivity_shouldUpdatePlainFieldsAndUpdatedAtWhenOneAllocationProvided() {
         String businessId = "act-1";
         Activity activity = new Activity();
         activity.setBusinessId(businessId);
@@ -508,12 +523,21 @@ class ActivityServiceTest {
                 "Updated notes",
                 Instant.parse("2026-05-26T08:00:00Z"),
                 Instant.parse("2026-05-26T09:00:00Z"),
-                List.of()
+                List.of(
+                        new CreateCategoryAllocationRequest(100, "cat-1", null)
+                )
         );
 
         ActivityResponse response = mock(ActivityResponse.class);
+        CategoryAllocation mappedAllocation = new CategoryAllocation();
+        mappedAllocation.setPercentage(100);
+
+        Category category = new Category();
+        category.setBusinessId("cat-1");
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
+        when(commandMapper.toEntity(any(CreateCategoryAllocationRequest.class))).thenReturn(mappedAllocation);
         when(responseMapper.toResponse(activity)).thenReturn(response);
 
         ActivityResponse result = service.updateActivity(businessId, request);
@@ -611,7 +635,7 @@ class ActivityServiceTest {
 
         Category oldCategory = new Category();
         oldCategory.setBusinessId("cat-old");
-        SubCategory oldSubCategory = new SubCategory(5L, "sub-cat-id", "name", "desctiption", oldCategory);
+        SubCategory oldSubCategory = new SubCategory(5L, "sub-cat-id", "name", "description", oldCategory);
 
         CategoryAllocation oldAllocation = new CategoryAllocation();
         oldAllocation.setCategory(oldCategory);
@@ -719,8 +743,6 @@ class ActivityServiceTest {
         CreateActivityRequest request = mock(CreateActivityRequest.class);
 
         when(request.categoryAllocations()).thenReturn(List.of());
-        when(request.customValues()).thenReturn(List.of());
-        when(request.tagIds()).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.registerNewActivity(request))
                 .isInstanceOf(BadRequestException.class)
