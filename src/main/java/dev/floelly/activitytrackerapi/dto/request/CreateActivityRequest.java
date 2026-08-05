@@ -3,6 +3,7 @@ package dev.floelly.activitytrackerapi.dto.request;
 import dev.floelly.activitytrackerapi.validation.ValidTSID;
 import dev.floelly.activitytrackerapi.validation.ValidTimeRange;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -24,6 +25,7 @@ public record CreateActivityRequest(
         Instant endAt,
 
         @NotNull
+        @NotEmpty
         List<@NotNull @Valid CreateCategoryAllocationRequest> categoryAllocations,
 
         @NotNull

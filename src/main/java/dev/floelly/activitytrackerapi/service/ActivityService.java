@@ -65,10 +65,8 @@ public class ActivityService {
 
     @Transactional
     public ActivityResponse registerNewActivity(CreateActivityRequest activityRequest) {
-        if (!activityRequest.categoryAllocations().isEmpty()) {
-            validateAllocations(activityRequest.categoryAllocations());
-            validateAllocationSum(activityRequest.categoryAllocations());
-        }
+        validateAllocations(activityRequest.categoryAllocations());
+        validateAllocationSum(activityRequest.categoryAllocations());
         Activity activity = commandMapper.toEntity(activityRequest);
 
         activity.setBusinessId(tsidFactory.generate().toString());
@@ -104,10 +102,8 @@ public class ActivityService {
             throw new BadRequestException("Activity id in request does not match the path variable");
         }
         List<CreateCategoryAllocationRequest> allocationRequests = activityRequest.categoryAllocations();
-        if (!allocationRequests.isEmpty()) {
-            validateAllocations(allocationRequests);
-            validateAllocationSum(allocationRequests);
-        }
+        validateAllocations(allocationRequests);
+        validateAllocationSum(allocationRequests);
         Activity activity = findByBusinessId(businessId);
         commandMapper.updateEntity(activityRequest, activity);
         mergeCategoryAllocations(activity, allocationRequests);
