@@ -70,6 +70,7 @@ public class ActivityService {
             validateAllocations(activityRequest.categoryAllocations());
             validateAllocationSum(activityRequest.categoryAllocations());
         }
+        validateCustomValueLabels(activityRequest.customValues());
         Activity activity = commandMapper.toEntity(activityRequest);
 
         activity.setBusinessId(tsidFactory.generate().toString());
@@ -109,6 +110,7 @@ public class ActivityService {
             validateAllocations(allocationRequests);
             validateAllocationSum(allocationRequests);
         }
+        validateCustomValueLabels(activityRequest.customValues());
         Activity activity = findByBusinessId(businessId);
         commandMapper.updateEntity(activityRequest, activity);
         mergeCategoryAllocations(activity, allocationRequests);
@@ -216,6 +218,23 @@ public class ActivityService {
                 .mapToInt(CreateCategoryAllocationRequest::percentage).sum();
         if (percentageSum != 100) {
             throw new BadRequestException("Sum of category allocations must be 100%");
+        }
+    }
+
+    private void validateCustomValueLabels(List<CreateActivityAttributeRequest> customValues) {
+        long distinctCount = customValues.stream()
+                .map(CreateActivityAttributeRequest::key)
+                .distinct()
+                .count();
+        if (distinctCount != customValues.size()) {
+            List<String> duplicates = customValues.stream()
+                    .map(CreateActivityAttributeRequest::key)
+                    .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+                    .entrySet().stream()
+                    .filter(entry -> entry.getValue() > 1)
+                    .map(Map.Entry::getKey)
+                    .toList();
+            throw new BadRequestException("Duplicate custom value keys found: " + duplicates + ".");
         }
     }
 

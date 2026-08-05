@@ -294,40 +294,12 @@ class ActivityServiceTest {
     @Test
     void registerNewActivity_shouldThrowBadRequest_whenDuplicateCustomValueKeys() {
         CreateActivityRequest request = mock(CreateActivityRequest.class);
-        Activity mappedActivity = new Activity();
 
         CreateActivityAttributeRequest attributeRequest1 = new CreateActivityAttributeRequest("weight", "80", true, 0);
         CreateActivityAttributeRequest attributeRequest2 = new CreateActivityAttributeRequest("weight", "81", false, 1);
 
         when(request.categoryAllocations()).thenReturn(List.of());
         when(request.customValues()).thenReturn(List.of(attributeRequest1, attributeRequest2));
-        when(request.tagIds()).thenReturn(List.of());
-        when(commandMapper.toEntity(request)).thenReturn(mappedActivity);
-
-        TSID tsid = mock(TSID.class);
-        when(tsidFactory.generate()).thenReturn(tsid);
-        when(tsid.toString()).thenReturn("act-tsid");
-
-        when(commandMapper.toEntity(attributeRequest1)).thenAnswer(invocation -> {
-            CreateActivityAttributeRequest source = invocation.getArgument(0);
-            ActivityAttribute attribute = new ActivityAttribute();
-            attribute.setLabel(source.key());
-            attribute.setValue(source.value());
-            attribute.setShowInOverview(source.showInOverview());
-            attribute.setSortOrder(source.sortOrder());
-            return attribute;
-        });
-        when(commandMapper.toEntity(attributeRequest2)).thenAnswer(invocation -> {
-            CreateActivityAttributeRequest source = invocation.getArgument(0);
-            ActivityAttribute attribute = new ActivityAttribute();
-            attribute.setLabel(source.key());
-            attribute.setValue(source.value());
-            attribute.setShowInOverview(source.showInOverview());
-            attribute.setSortOrder(source.sortOrder());
-            return attribute;
-        });
-
-        when(tagRepository.findByBusinessIdIn(argThat(Collection::isEmpty))).thenReturn(Set.of());
 
         assertThatThrownBy(() -> service.registerNewActivity(request))
                 .isInstanceOf(BadRequestException.class)
@@ -548,11 +520,6 @@ class ActivityServiceTest {
     void updateActivity_shouldThrowBadRequest_whenDuplicateCustomValueKeys() {
         String businessId = "act-1";
 
-        Activity activity = new Activity();
-        activity.setBusinessId(businessId);
-        activity.setCategoryAllocations(new HashSet<>());
-        activity.setAttributes(new HashSet<>());
-
         UpdateActivityRequest request = new UpdateActivityRequest(
                 businessId,
                 "Updated title",
@@ -565,17 +532,6 @@ class ActivityServiceTest {
                         new CreateActivityAttributeRequest("weight", "81", false, 1)
                 )
         );
-
-        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
-        when(commandMapper.toEntity(any(CreateActivityAttributeRequest.class))).thenAnswer(invocation -> {
-            CreateActivityAttributeRequest source = invocation.getArgument(0);
-            ActivityAttribute attribute = new ActivityAttribute();
-            attribute.setLabel(source.key());
-            attribute.setValue(source.value());
-            attribute.setShowInOverview(source.showInOverview());
-            attribute.setSortOrder(source.sortOrder());
-            return attribute;
-        });
 
         assertThatThrownBy(() -> service.updateActivity(businessId, request))
                 .isInstanceOf(BadRequestException.class)
