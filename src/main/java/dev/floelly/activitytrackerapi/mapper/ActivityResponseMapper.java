@@ -16,6 +16,7 @@ import dev.floelly.activitytrackerapi.entity.Tag;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -99,12 +100,13 @@ public interface ActivityResponseMapper {
 
     default ActivitiesResponse toActivitiesResponse(List<Activity> activities) {
         if (activities == null) {
-            return null;
+            return new ActivitiesResponse(false, List.of());
         }
-        activities.sort(Comparator.comparing(Activity::getStartAt));
+        List<Activity> mutableList = new ArrayList<>(activities);
+        mutableList.sort(Comparator.comparing(Activity::getStartAt));
         return new ActivitiesResponse(
                 false,
-                activities.stream()
+                mutableList.stream()
                         .map(this::toResponse)
                         .toList()
         );
