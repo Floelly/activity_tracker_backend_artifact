@@ -4,7 +4,8 @@ import dev.floelly.activitytrackerapi.entity.Activity;
 import dev.floelly.activitytrackerapi.entity.Category;
 import dev.floelly.activitytrackerapi.entity.CategoryAllocation;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
-import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.*;
+import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.ActivitiesDashboardFilterDTO;
+import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.Response;
 import dev.floelly.activitytrackerapi.repository.ActivityRepository;
 import dev.floelly.activitytrackerapi.repository.CategoryRepository;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -70,7 +73,7 @@ class ServiceTest {
     }
 
     @Test
-    void getActivitiesDashboardResponse_shouldUseRequestedCategoriesForSummary_whenCategoryFilterPresent() {
+    void getActivitiesDashboardResponse_shouldUseRequestedCategoriesForResponse_whenCategoryFilterPresent() {
         ActivitiesDashboardFilterDTO filter = new ActivitiesDashboardFilterDTO(
                 Instant.parse("2026-06-01T00:00:00Z"),
                 Instant.parse("2026-06-02T00:00:00Z"),
@@ -87,26 +90,20 @@ class ServiceTest {
                 new PeriodKey(Instant.parse("2026-06-01T00:00:00Z"), Instant.parse("2026-06-02T00:00:00Z"))
         );
         Map<PeriodKey, Map<String, Long>> aggregated = Map.of();
-        SummaryResponse summary = new SummaryResponse(10, 10, List.of(
-                new CategoryResponse("cat-2", "Work", 6, 0.6f, null, null),
-                new CategoryResponse("cat-1", "Sport", 4, 0.4f, null, null)
-        ));
-        TimeSeriesResponse timeSeries = new TimeSeriesResponse(TimeGranularity.DAY, List.of());
+        Response expectedResponse = new Response(filter, null, null);
 
         when(categoryRepository.findAllByBusinessIdIn(filter.category())).thenReturn(requestedCategories);
         when(activityRepository.findAll(any(Specification.class))).thenReturn(activities);
         when(periodFactory.buildPeriods(filter)).thenReturn(orderedPeriods);
         when(aggregator.aggregateSecondsByPeriodAndCategory(activities, orderedPeriods)).thenReturn(aggregated);
-        when(responseMapper.buildSummary(requestedCategories, aggregated, orderedPeriods.size())).thenReturn(summary);
-        when(responseMapper.buildTimeSeries(eq(TimeGranularity.DAY), eq(orderedPeriods), eq(aggregated), anyList())).thenReturn(timeSeries);
+        when(responseMapper.buildResponse(eq(filter), eq(requestedCategories), eq(aggregated), eq(orderedPeriods)))
+                .thenReturn(expectedResponse);
 
         Response result = service.getActivitiesDashboardResponse(filter);
 
         verify(activityRepository).findAll(any(Specification.class));
-        verify(responseMapper).buildSummary(requestedCategories, aggregated, 1);
-        assertThat(result.filters()).isEqualTo(filter);
-        assertThat(result.summary()).isEqualTo(summary);
-        assertThat(result.timeSeries()).isEqualTo(timeSeries);
+        verify(responseMapper).buildResponse(eq(filter), eq(requestedCategories), eq(aggregated), eq(orderedPeriods));
+        assertThat(result).isEqualTo(expectedResponse);
     }
 
     @Test
@@ -129,18 +126,17 @@ class ServiceTest {
                 new PeriodKey(Instant.parse("2026-06-01T00:00:00Z"), Instant.parse("2026-06-02T00:00:00Z"))
         );
         Map<PeriodKey, Map<String, Long>> aggregated = Map.of();
-        SummaryResponse summary = new SummaryResponse(10, 10, List.of());
-        TimeSeriesResponse timeSeries = new TimeSeriesResponse(TimeGranularity.DAY, List.of());
+        Response expectedResponse = new Response(filter, null, null);
 
         when(activityRepository.findAll(any(Specification.class))).thenReturn(activities);
         when(periodFactory.buildPeriods(filter)).thenReturn(orderedPeriods);
         when(aggregator.aggregateSecondsByPeriodAndCategory(activities, orderedPeriods)).thenReturn(aggregated);
-        when(responseMapper.buildSummary(anyList(), eq(aggregated), eq(1))).thenReturn(summary);
-        when(responseMapper.buildTimeSeries(eq(TimeGranularity.DAY), eq(orderedPeriods), eq(aggregated), anyList())).thenReturn(timeSeries);
+        when(responseMapper.buildResponse(eq(filter), anyList(), eq(aggregated), eq(orderedPeriods)))
+                .thenReturn(expectedResponse);
 
         service.getActivitiesDashboardResponse(filter);
 
-        verify(responseMapper).buildSummary(categoriesCaptor.capture(), eq(aggregated), eq(1));
+        verify(responseMapper).buildResponse(eq(filter), categoriesCaptor.capture(), eq(aggregated), eq(orderedPeriods));
 
         assertThat(categoriesCaptor.getValue())
                 .extracting(Category::getBusinessId)
@@ -167,18 +163,17 @@ class ServiceTest {
                 new PeriodKey(Instant.parse("2026-06-01T00:00:00Z"), Instant.parse("2026-06-02T00:00:00Z"))
         );
         Map<PeriodKey, Map<String, Long>> aggregated = Map.of();
-        SummaryResponse summary = new SummaryResponse(10, 10, List.of());
-        TimeSeriesResponse timeSeries = new TimeSeriesResponse(TimeGranularity.DAY, List.of());
+        Response expectedResponse = new Response(filter, null, null);
 
         when(activityRepository.findAll(any(Specification.class))).thenReturn(activities);
         when(periodFactory.buildPeriods(filter)).thenReturn(orderedPeriods);
         when(aggregator.aggregateSecondsByPeriodAndCategory(activities, orderedPeriods)).thenReturn(aggregated);
-        when(responseMapper.buildSummary(anyList(), eq(aggregated), eq(1))).thenReturn(summary);
-        when(responseMapper.buildTimeSeries(eq(TimeGranularity.DAY), eq(orderedPeriods), eq(aggregated), anyList())).thenReturn(timeSeries);
+        when(responseMapper.buildResponse(eq(filter), anyList(), eq(aggregated), eq(orderedPeriods)))
+                .thenReturn(expectedResponse);
 
         service.getActivitiesDashboardResponse(filter);
 
-        verify(responseMapper).buildSummary(categoriesCaptor.capture(), eq(aggregated), eq(1));
+        verify(responseMapper).buildResponse(eq(filter), categoriesCaptor.capture(), eq(aggregated), eq(orderedPeriods));
 
         assertThat(categoriesCaptor.getValue())
                 .extracting(Category::getBusinessId)
@@ -200,60 +195,18 @@ class ServiceTest {
                 new PeriodKey(Instant.parse("2026-06-01T00:00:00Z"), Instant.parse("2026-06-02T00:00:00Z"))
         );
         Map<PeriodKey, Map<String, Long>> aggregated = Map.of();
-        SummaryResponse summary = new SummaryResponse(10, 10, List.of());
-        TimeSeriesResponse timeSeries = new TimeSeriesResponse(TimeGranularity.DAY, List.of());
+        Response expectedResponse = new Response(filter, null, null);
 
         when(activityRepository.findAll(any(Specification.class))).thenReturn(activities);
         when(periodFactory.buildPeriods(filter)).thenReturn(orderedPeriods);
         when(aggregator.aggregateSecondsByPeriodAndCategory(activities, orderedPeriods)).thenReturn(aggregated);
-        when(responseMapper.buildSummary(anyList(), eq(aggregated), eq(1))).thenReturn(summary);
-        when(responseMapper.buildTimeSeries(eq(TimeGranularity.DAY), eq(orderedPeriods), eq(aggregated), anyList())).thenReturn(timeSeries);
+        when(responseMapper.buildResponse(eq(filter), anyList(), eq(aggregated), eq(orderedPeriods)))
+                .thenReturn(expectedResponse);
 
         service.getActivitiesDashboardResponse(filter);
 
         verify(periodFactory).buildPeriods(filter);
         verify(aggregator).aggregateSecondsByPeriodAndCategory(activities, orderedPeriods);
-    }
-
-    @Test
-    void getActivitiesDashboardResponse_shouldSortCategoriesForTimeSeriesLikeSummary() {
-        ActivitiesDashboardFilterDTO filter = new ActivitiesDashboardFilterDTO(
-                Instant.parse("2026-06-01T00:00:00Z"),
-                Instant.parse("2026-06-02T00:00:00Z"),
-                TimeGranularity.DAY,
-                null
-        );
-
-        Category category1 = createCategory("cat-1", "Sport");
-        Category category2 = createCategory("cat-2", "Work");
-
-        List<Activity> activities = List.of(
-                createActivity("activity-1", category1),
-                createActivity("activity-2", category2)
-        );
-        List<PeriodKey> orderedPeriods = List.of(
-                new PeriodKey(Instant.parse("2026-06-01T00:00:00Z"), Instant.parse("2026-06-02T00:00:00Z"))
-        );
-        Map<PeriodKey, Map<String, Long>> aggregated = Map.of();
-        SummaryResponse summary = new SummaryResponse(10, 10, List.of(
-                new CategoryResponse("cat-2", "Work", 6, 0.6f, null, null),
-                new CategoryResponse("cat-1", "Sport", 4, 0.4f, null, null)
-        ));
-        TimeSeriesResponse timeSeries = new TimeSeriesResponse(TimeGranularity.DAY, List.of());
-
-        when(activityRepository.findAll(any(Specification.class))).thenReturn(activities);
-        when(periodFactory.buildPeriods(filter)).thenReturn(orderedPeriods);
-        when(aggregator.aggregateSecondsByPeriodAndCategory(activities, orderedPeriods)).thenReturn(aggregated);
-        when(responseMapper.buildSummary(anyList(), eq(aggregated), eq(1))).thenReturn(summary);
-        when(responseMapper.buildTimeSeries(eq(TimeGranularity.DAY), eq(orderedPeriods), eq(aggregated), anyList())).thenReturn(timeSeries);
-
-        service.getActivitiesDashboardResponse(filter);
-
-        verify(responseMapper).buildTimeSeries(eq(TimeGranularity.DAY), eq(orderedPeriods), eq(aggregated), categoriesCaptor.capture());
-
-        assertThat(categoriesCaptor.getValue())
-                .extracting(Category::getBusinessId)
-                .containsExactly("cat-2", "cat-1");
     }
 
     @Test
@@ -271,22 +224,17 @@ class ServiceTest {
                 new PeriodKey(Instant.parse("2026-06-01T00:00:00Z"), Instant.parse("2026-06-02T00:00:00Z"))
         );
         Map<PeriodKey, Map<String, Long>> aggregated = Map.of();
-        SummaryResponse summary = new SummaryResponse(120, 120, List.of(
-                new CategoryResponse("cat-1", "Sport", 120, 1.0f, "#fff", "icon")
-        ));
-        TimeSeriesResponse timeSeries = new TimeSeriesResponse(TimeGranularity.DAY, List.of());
+        Response expectedResponse = new Response(filter, null, null);
 
         when(activityRepository.findAll(any(Specification.class))).thenReturn(activities);
         when(periodFactory.buildPeriods(filter)).thenReturn(orderedPeriods);
         when(aggregator.aggregateSecondsByPeriodAndCategory(activities, orderedPeriods)).thenReturn(aggregated);
-        when(responseMapper.buildSummary(anyList(), eq(aggregated), eq(1))).thenReturn(summary);
-        when(responseMapper.buildTimeSeries(eq(TimeGranularity.DAY), eq(orderedPeriods), eq(aggregated), anyList())).thenReturn(timeSeries);
+        when(responseMapper.buildResponse(eq(filter), anyList(), eq(aggregated), eq(orderedPeriods)))
+                .thenReturn(expectedResponse);
 
         Response response = service.getActivitiesDashboardResponse(filter);
 
-        assertThat(response.filters()).isEqualTo(filter);
-        assertThat(response.summary()).isEqualTo(summary);
-        assertThat(response.timeSeries()).isEqualTo(timeSeries);
+        assertThat(response).isEqualTo(expectedResponse);
     }
 
     @Test

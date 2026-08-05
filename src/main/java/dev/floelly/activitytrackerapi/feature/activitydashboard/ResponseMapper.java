@@ -1,13 +1,16 @@
 package dev.floelly.activitytrackerapi.feature.activitydashboard;
 
 import dev.floelly.activitytrackerapi.entity.Category;
+import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.ActivitiesDashboardFilterDTO;
 import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.CategoryResponse;
 import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.PeriodResponse;
+import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.Response;
 import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.SummaryResponse;
 import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.TimeSeriesResponse;
 import lombok.NonNull;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -16,6 +19,18 @@ import java.util.Map;
 
 @Service
 class ResponseMapper {
+
+    Response buildResponse(
+            @NonNull ActivitiesDashboardFilterDTO filter,
+            @NonNull List<Category> categories,
+            @NonNull Map<PeriodKey, Map<String, Long>> secondsByPeriodAndCategory,
+            @NonNull List<PeriodKey> orderedPeriods) {
+        SummaryResponse summary = buildSummary(categories, secondsByPeriodAndCategory, orderedPeriods.size());
+        List<Category> orderedCategories = sortCategoriesLikeSummary(categories, summary);
+        TimeSeriesResponse timeSeries = buildTimeSeries(filter.granularity(), orderedPeriods, secondsByPeriodAndCategory, orderedCategories);
+        return new Response(filter, summary, timeSeries);
+    }
+
     @SuppressWarnings("PMD.LooseCoupling")
     SummaryResponse buildSummary(List<Category> categories, Map<PeriodKey, Map<String, Long>> secondsByPeriodAndCategory, int periodCount) {
         Map<String, Long> secondsPerCategory = new HashMap<>();
@@ -78,5 +93,16 @@ class ResponseMapper {
                 category.getColorCode(),
                 category.getIconName()
         );
+    }
+
+    @SuppressWarnings("PMD.LooseCoupling")
+    private List<Category> sortCategoriesLikeSummary(Collection<Category> categories, SummaryResponse summary) {
+        Map<String, Integer> orderByCategoryId = new HashMap<>();
+        for (int i = 0; i < summary.categories().size(); i++) {
+            orderByCategoryId.put(summary.categories().get(i).id(), i);
+        }
+        return categories.stream()
+                .sorted(Comparator.comparingInt(category -> orderByCategoryId.getOrDefault(category.getBusinessId(), Integer.MAX_VALUE)))
+                .toList();
     }
 }

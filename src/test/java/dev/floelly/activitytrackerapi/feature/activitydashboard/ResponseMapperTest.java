@@ -1,7 +1,9 @@
 package dev.floelly.activitytrackerapi.feature.activitydashboard;
 
 import dev.floelly.activitytrackerapi.entity.Category;
+import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.ActivitiesDashboardFilterDTO;
 import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.CategoryResponse;
+import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.Response;
 import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.SummaryResponse;
 import dev.floelly.activitytrackerapi.feature.activitydashboard.dto.TimeSeriesResponse;
 import org.junit.jupiter.api.Test;
@@ -177,6 +179,96 @@ class ResponseMapperTest {
         assertThat(dto.percentage()).isEqualTo(0.5f);
         assertThat(dto.color()).isEqualTo("#123456");
         assertThat(dto.icon()).isEqualTo("fitness");
+    }
+
+    @Test
+    void buildResponse_shouldBuildFullResponseWithFilterSummaryAndTimeSeries() {
+        ActivitiesDashboardFilterDTO filter = new ActivitiesDashboardFilterDTO(
+                Instant.parse("2026-06-01T00:00:00Z"),
+                Instant.parse("2026-06-02T00:00:00Z"),
+                TimeGranularity.DAY,
+                null
+        );
+
+        Category category1 = createCategory("cat-1", "Sport", "#123456", "fitness");
+        List<Category> categories = List.of(category1);
+
+        List<PeriodKey> orderedPeriods = List.of(
+                createPeriodKey("2026-06-01T00:00:00Z", "2026-06-02T00:00:00Z")
+        );
+
+        Map<PeriodKey, Map<String, Long>> secondsByPeriodAndCategory = Map.of(
+                orderedPeriods.getFirst(),
+                Map.of("cat-1", 3600L)
+        );
+
+        Response response = mapper.buildResponse(filter, categories, secondsByPeriodAndCategory, orderedPeriods);
+
+        assertThat(response.filters()).isEqualTo(filter);
+        assertThat(response.summary()).isNotNull();
+        assertThat(response.timeSeries()).isNotNull();
+        assertThat(response.summary().totalMinutes()).isEqualTo(60);
+        assertThat(response.timeSeries().periods()).hasSize(1);
+        assertThat(response.timeSeries().granularity()).isEqualTo(TimeGranularity.DAY);
+    }
+
+    @Test
+    void buildResponse_shouldSortCategoriesForTimeSeriesLikeSummary() {
+        ActivitiesDashboardFilterDTO filter = new ActivitiesDashboardFilterDTO(
+                Instant.parse("2026-06-01T00:00:00Z"),
+                Instant.parse("2026-06-02T00:00:00Z"),
+                TimeGranularity.DAY,
+                null
+        );
+
+        Category category1 = createCategory("cat-1", "Sport", "#123456", "fitness");
+        Category category2 = createCategory("cat-2", "Work", "#654321", "work");
+        List<Category> categories = List.of(category1, category2);
+
+        List<PeriodKey> orderedPeriods = List.of(
+                createPeriodKey("2026-06-01T00:00:00Z", "2026-06-02T00:00:00Z")
+        );
+
+        // cat-2 has more seconds, so in summary it should be first, and timeSeries should follow same order
+        Map<PeriodKey, Map<String, Long>> secondsByPeriodAndCategory = Map.of(
+                orderedPeriods.getFirst(),
+                Map.of("cat-1", 1800L, "cat-2", 7200L)
+        );
+
+        Response response = mapper.buildResponse(filter, categories, secondsByPeriodAndCategory, orderedPeriods);
+
+        // Summary should be sorted by minutes descending: cat-2 first, then cat-1
+        assertThat(response.summary().categories())
+                .extracting(CategoryResponse::id)
+                .containsExactly("cat-2", "cat-1");
+
+        // Time series categories should follow same order as summary
+        assertThat(response.timeSeries().periods().getFirst().categories())
+                .extracting(CategoryResponse::id)
+                .containsExactly("cat-2", "cat-1");
+    }
+
+    @Test
+    void buildResponse_shouldHandleEmptyCategories() {
+        ActivitiesDashboardFilterDTO filter = new ActivitiesDashboardFilterDTO(
+                Instant.parse("2026-06-01T00:00:00Z"),
+                Instant.parse("2026-06-02T00:00:00Z"),
+                TimeGranularity.DAY,
+                null
+        );
+
+        List<Category> categories = List.of();
+        List<PeriodKey> orderedPeriods = List.of(
+                createPeriodKey("2026-06-01T00:00:00Z", "2026-06-02T00:00:00Z")
+        );
+        Map<PeriodKey, Map<String, Long>> secondsByPeriodAndCategory = Map.of(
+                orderedPeriods.getFirst(), Map.of()
+        );
+
+        Response response = mapper.buildResponse(filter, categories, secondsByPeriodAndCategory, orderedPeriods);
+
+        assertThat(response.summary().categories()).isEmpty();
+        assertThat(response.timeSeries().periods().getFirst().categories()).isEmpty();
     }
 
     private Category createCategory(String businessId, String name, String colorCode, String iconName) {
