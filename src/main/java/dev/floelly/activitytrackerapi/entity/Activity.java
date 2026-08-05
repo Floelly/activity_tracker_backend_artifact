@@ -19,6 +19,7 @@ import org.hibernate.annotations.NaturalId;
 
 import java.time.Instant;
 import java.util.Set;
+import java.util.HashSet;
 
 @Entity
 @Getter
@@ -50,10 +51,10 @@ public class Activity {
     private Instant endAt;
 
     @OneToMany(mappedBy = "activity", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<CategoryAllocation> categoryAllocations;
+    private Set<CategoryAllocation> categoryAllocations = new HashSet<>();
 
     @OneToMany(mappedBy = "activity", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<ActivityAttribute> attributes;
+    private Set<ActivityAttribute> attributes = new HashSet<>();
 
     @ManyToMany
     @JoinTable(
@@ -61,7 +62,7 @@ public class Activity {
             joinColumns = @JoinColumn(name = "activity_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
-    private Set<Tag> tags;
+    private Set<Tag> tags = new HashSet<>();
 
     @NotNull
     @Column(nullable = false)
