@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -111,8 +112,17 @@ public class ActivityService {
         Activity activity = findByBusinessId(businessId);
         commandMapper.updateEntity(activityRequest, activity);
         mergeCategoryAllocations(activity, allocationRequests);
-        // TODO: update custom values       // NOSONAR - a future implementation option
-        // TODO: update tags                // NOSONAR - a future implementation option
+        if (activity.getTags() == null) {
+            activity.setTags(new HashSet<>());
+        }
+        Set<Tag> tags = tagRepository.findByBusinessIdIn(activityRequest.tagIds());
+        activity.getTags().clear();
+        if (tags != null) {
+            activity.getTags().addAll(tags);
+        }
+
+        mergeAttributes(activity, activityRequest.customValues());
+
         activity.setUpdatedAt(Instant.now());
         return responseMapper.toResponse(activity);
     }
@@ -174,6 +184,34 @@ public class ActivityService {
                 existing.setPercentage(allocationRequest.percentage());
             } else {
                 activity.getCategoryAllocations().add(mapRequestToCategoryAllocation(allocationRequest, activity));
+            }
+        }
+    }
+
+    private void mergeAttributes(Activity activity, List<CreateActivityAttributeRequest> attributeRequests) {
+        if (activity.getAttributes() == null) {
+            activity.setAttributes(new HashSet<>());
+        }
+
+        Map<String, ActivityAttribute> existingByLabel = activity.getAttributes().stream()
+                .collect(Collectors.toMap(ActivityAttribute::getLabel, Function.identity()));
+
+        List<String> requestedLabels = attributeRequests.stream()
+                .map(CreateActivityAttributeRequest::key)
+                .toList();
+
+        activity.getAttributes().removeIf(existing -> !requestedLabels.contains(existing.getLabel()));
+
+        for (CreateActivityAttributeRequest attrRequest : attributeRequests) {
+            ActivityAttribute existing = existingByLabel.get(attrRequest.key());
+            if (existing != null) {
+                existing.setValue(attrRequest.value());
+                existing.setShowInOverview(attrRequest.showInOverview());
+                existing.setSortOrder(attrRequest.sortOrder());
+            } else {
+                ActivityAttribute attribute = commandMapper.toEntity(attrRequest);
+                attribute.setActivity(activity);
+                activity.getAttributes().add(attribute);
             }
         }
     }

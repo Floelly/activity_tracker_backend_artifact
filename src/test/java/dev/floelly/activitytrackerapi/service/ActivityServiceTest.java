@@ -775,15 +775,6 @@ class ActivityServiceTest {
         );
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
-        when(commandMapper.toEntity(any(CreateActivityAttributeRequest.class))).thenAnswer(invocation -> {
-            CreateActivityAttributeRequest source = invocation.getArgument(0);
-            ActivityAttribute attribute = new ActivityAttribute();
-            attribute.setLabel(source.key());
-            attribute.setValue(source.value());
-            attribute.setShowInOverview(source.showInOverview());
-            attribute.setSortOrder(source.sortOrder());
-            return attribute;
-        });
         when(responseMapper.toResponse(activity)).thenReturn(mock(ActivityResponse.class));
 
         service.updateActivity(businessId, request);
