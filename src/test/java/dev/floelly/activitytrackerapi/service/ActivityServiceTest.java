@@ -509,6 +509,8 @@ class ActivityServiceTest {
         Activity activity = new Activity();
         activity.setBusinessId(businessId);
         activity.setCategoryAllocations(new HashSet<>());
+        activity.setAttributes(new HashSet<>());
+        activity.setTags(new HashSet<>());
 
         UpdateActivityRequest request = new UpdateActivityRequest(
                 businessId,
@@ -543,6 +545,8 @@ class ActivityServiceTest {
         Activity activity = new Activity();
         activity.setBusinessId(businessId);
         activity.setCategoryAllocations(new HashSet<>());
+        activity.setAttributes(new HashSet<>());
+        activity.setTags(new HashSet<>());
 
         Category category = new Category();
         category.setBusinessId("cat-1");
@@ -595,6 +599,8 @@ class ActivityServiceTest {
         Activity activity = new Activity();
         activity.setBusinessId(businessId);
         activity.setCategoryAllocations(new HashSet<>(Set.of(existingAllocation)));
+        activity.setAttributes(new HashSet<>());
+        activity.setTags(new HashSet<>());
 
         UpdateActivityRequest request = new UpdateActivityRequest(
                 businessId,
@@ -775,15 +781,6 @@ class ActivityServiceTest {
         );
 
         when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
-        when(commandMapper.toEntity(any(CreateActivityAttributeRequest.class))).thenAnswer(invocation -> {
-            CreateActivityAttributeRequest source = invocation.getArgument(0);
-            ActivityAttribute attribute = new ActivityAttribute();
-            attribute.setLabel(source.key());
-            attribute.setValue(source.value());
-            attribute.setShowInOverview(source.showInOverview());
-            attribute.setSortOrder(source.sortOrder());
-            return attribute;
-        });
         when(responseMapper.toResponse(activity)).thenReturn(mock(ActivityResponse.class));
 
         service.updateActivity(businessId, request);
@@ -808,6 +805,8 @@ class ActivityServiceTest {
         Activity activity = new Activity();
         activity.setBusinessId(businessId);
         activity.setCategoryAllocations(new HashSet<>(Set.of(oldAllocation)));
+        activity.setAttributes(new HashSet<>());
+        activity.setTags(new HashSet<>());
 
         Category newCategory = new Category();
         newCategory.setBusinessId("cat-new");
@@ -848,6 +847,8 @@ class ActivityServiceTest {
         Activity activity = new Activity();
         activity.setBusinessId(businessId);
         activity.setCategoryAllocations(new HashSet<>());
+        activity.setAttributes(new HashSet<>());
+        activity.setTags(new HashSet<>());
 
         UpdateActivityRequest request = new UpdateActivityRequest(
                 businessId,
@@ -876,6 +877,8 @@ class ActivityServiceTest {
         Activity activity = new Activity();
         activity.setBusinessId(businessId);
         activity.setCategoryAllocations(new HashSet<>());
+        activity.setAttributes(new HashSet<>());
+        activity.setTags(new HashSet<>());
 
         Category category = new Category();
         category.setBusinessId("cat-1");

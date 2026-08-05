@@ -111,8 +111,8 @@ public class ActivityService {
         Activity activity = findByBusinessId(businessId);
         commandMapper.updateEntity(activityRequest, activity);
         mergeCategoryAllocations(activity, allocationRequests);
-        // TODO: update custom values       // NOSONAR - a future implementation option
-        // TODO: update tags                // NOSONAR - a future implementation option
+        mergeCustomValues(activity, activityRequest.customValues());
+        mergeTags(activity, activityRequest.tagIds());
         activity.setUpdatedAt(Instant.now());
         return responseMapper.toResponse(activity);
     }
@@ -176,6 +176,35 @@ public class ActivityService {
                 activity.getCategoryAllocations().add(mapRequestToCategoryAllocation(allocationRequest, activity));
             }
         }
+    }
+
+    private void mergeCustomValues(Activity activity, List<CreateActivityAttributeRequest> customValueRequests) {
+        Map<String, ActivityAttribute> existingByLabel = activity.getAttributes().stream()
+                .collect(Collectors.toMap(ActivityAttribute::getLabel, Function.identity()));
+
+        Set<String> requestedLabels = customValueRequests.stream()
+                .map(CreateActivityAttributeRequest::key)
+                .collect(Collectors.toSet());
+
+        activity.getAttributes().removeIf(existing ->
+                !requestedLabels.contains(existing.getLabel()));
+
+        for (CreateActivityAttributeRequest request : customValueRequests) {
+            ActivityAttribute existing = existingByLabel.get(request.key());
+            if (existing != null) {
+                existing.setValue(request.value());
+                existing.setShowInOverview(request.showInOverview());
+                existing.setSortOrder(request.sortOrder());
+            } else {
+                activity.getAttributes().add(mapRequestToActivityAttribute(request, activity));
+            }
+        }
+    }
+
+    private void mergeTags(Activity activity, List<String> tagIds) {
+        Set<Tag> tags = tagRepository.findByBusinessIdIn(tagIds);
+        activity.getTags().clear();
+        activity.getTags().addAll(tags);
     }
 
     private void validateAllocationSum(List<CreateCategoryAllocationRequest> allocations) {
