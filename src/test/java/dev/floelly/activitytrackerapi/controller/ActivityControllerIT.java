@@ -31,7 +31,7 @@ class ActivityControllerIT {
 
     @Test
     void shouldReturn201_onPostActivity_whenValidRequest() throws Exception {
-        createActivityAndGetId();
+        createActivityWithDefaultCategoryAndGetId();
     }
 
     @Test
@@ -110,36 +110,50 @@ class ActivityControllerIT {
 
     @Test
     void shouldReturn400_onPostActivity_whenNoStartTimeProvided() throws Exception {
+        String categoryId = createCategoryAndGetId();
         mockMvc.perform(post("/api/activities")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(String.format("""
                                 {
                                     "title": "Some Activity",
                                     "notes": "Some notes",
                                     "startAt": null,
                                     "endAt": "2023-01-01T01:00:00Z",
-                                    "categoryAllocations": [],
+                                    "categoryAllocations": [
+                                        {
+                                            "percentage": 100,
+                                            "categoryId": "%s",
+                                            "subCategoryId": null
+                                        }
+                                    ],
                                     "customValues": [],
                                     "tagIds": []
                                 }
-                                """))
+                                """, categoryId)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void shouldReturnActivityResponseDTO_onGetActivityById() throws Exception {
+        String categoryId = createCategoryAndGetId();
         String activityId = createActivityAndGetId(
-                """
+                String.format("""
                         {
                             "title": "Some Activity",
                             "notes": "Some notes",
                             "startAt": "2023-01-01T00:00:00Z",
                             "endAt": "2023-01-01T01:00:00Z",
-                            "categoryAllocations": [],
+                            "categoryAllocations": [
+                                {
+                                    "percentage": 100,
+                                    "categoryId": "%s",
+                                    "subCategoryId": null
+                                }
+                            ],
                             "customValues": [],
                             "tagIds": []
                         }
-                        """
+                        """, categoryId)
         );
 
         mockMvc.perform(get("/api/activities/" + activityId))
@@ -152,7 +166,7 @@ class ActivityControllerIT {
                 .andExpect(jsonPath("$.endAt").value("2023-01-01T01:00:00Z"))
                 .andExpect(jsonPath("$.durationInSeconds").value(3600))
                 .andExpect(jsonPath("$.categoryAllocations").isArray())
-                .andExpect(jsonPath("$.categoryAllocations").isEmpty())
+                .andExpect(jsonPath("$.categoryAllocations.length()").value(1))
                 .andExpect(jsonPath("$.customValues").isArray())
                 .andExpect(jsonPath("$.customValues").isEmpty())
                 .andExpect(jsonPath("$.tags").isArray())
@@ -184,17 +198,17 @@ class ActivityControllerIT {
 
     @Test
     void shouldFilterActivities_byFromStartAt_onGetAllActivities() throws Exception {
-        createActivityWithTimesAndReturnId(
+        createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity Before Beginning",
                 "2023-01-01T08:00:00Z",
                 "2023-01-01T09:00:00Z"
         );
-        String activityId1 = createActivityWithTimesAndReturnId(
+        String activityId1 = createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity After Beginning 1",
                 "2023-01-02T10:00:00Z",
                 "2023-01-02T11:00:00Z"
         );
-        String activityId2 = createActivityWithTimesAndReturnId(
+        String activityId2 = createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity After Beginning 2",
                 "2023-01-03T12:00:00Z",
                 "2023-01-03T13:00:00Z"
@@ -211,17 +225,17 @@ class ActivityControllerIT {
 
     @Test
     void shouldFilterActivities_byToStartAt_onGetAllActivities() throws Exception {
-        String activityId1 = createActivityWithTimesAndReturnId(
+        String activityId1 = createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity Before End 1",
                 "2023-01-01T08:00:00Z",
                 "2023-01-01T09:00:00Z"
         );
-        String activityId2 = createActivityWithTimesAndReturnId(
+        String activityId2 = createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity Before End 2",
                 "2023-01-01T10:00:00Z",
                 "2023-01-01T11:00:00Z"
         );
-        createActivityWithTimesAndReturnId(
+        createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity After End",
                 "2023-01-03T12:00:00Z",
                 "2023-01-03T13:00:00Z"
@@ -238,22 +252,22 @@ class ActivityControllerIT {
 
     @Test
     void shouldFilterActivities_byBothTimeRange_onGetAllActivities() throws Exception {
-        createActivityWithTimesAndReturnId(
+        createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity Before Range",
                 "2023-01-01T08:00:00Z",
                 "2023-01-01T09:00:00Z"
         );
-        String activityId1 = createActivityWithTimesAndReturnId(
+        String activityId1 = createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity In Range 1",
                 "2023-01-02T10:00:00Z",
                 "2023-01-02T11:00:00Z"
         );
-        String activityId2 = createActivityWithTimesAndReturnId(
+        String activityId2 = createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity In Range 2",
                 "2023-01-02T14:00:00Z",
                 "2023-01-02T15:00:00Z"
         );
-        createActivityWithTimesAndReturnId(
+        createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity After Range",
                 "2023-01-03T12:00:00Z",
                 "2023-01-03T13:00:00Z"
@@ -274,12 +288,13 @@ class ActivityControllerIT {
     void shouldFilterActivities_bySingleCategory_onGetAllActivities() throws Exception {
         String sportsCategoryId = createCategoryAndGetId();
         String workCategoryId = createCategoryAndGetId();
+        String otherCategoryId = createCategoryAndGetId();
 
         String sportsActivityId = createActivityWithCategoryAndGetId(sportsCategoryId);
 
         String workActivityId = createActivityWithCategoryAndGetId(workCategoryId);
 
-        String noCategoryActivityId = createActivityAndGetId();
+        String otherActivityId = createActivityWithCategoryAndGetId(otherCategoryId);
 
         mockMvc.perform(get("/api/activities")
                         .param("category", sportsCategoryId))
@@ -287,7 +302,7 @@ class ActivityControllerIT {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.activities[*].id", hasItem(sportsActivityId)))
                 .andExpect(jsonPath("$.activities[*].id", not(hasItem(workActivityId))))
-                .andExpect(jsonPath("$.activities[*].id", not(hasItem(noCategoryActivityId))));
+                .andExpect(jsonPath("$.activities[*].id", not(hasItem(otherActivityId))));
     }
 
     @Test
@@ -345,17 +360,17 @@ class ActivityControllerIT {
 
     @Test
     void shouldReturnAllActivities_whenNoFilterProvided_onGetAllActivities() throws Exception {
-        String activityId1 = createActivityWithTimesAndReturnId(
+        String activityId1 = createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity 1",
                 "2023-01-01T08:00:00Z",
                 "2023-01-01T09:00:00Z"
         );
-        String activityId2 = createActivityWithTimesAndReturnId(
+        String activityId2 = createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity 2",
                 "2023-01-02T10:00:00Z",
                 "2023-01-02T11:00:00Z"
         );
-        String activityId3 = createActivityWithTimesAndReturnId(
+        String activityId3 = createActivityWithDefaultCategoryAndTimesAndGetId(
                 "Activity 3",
                 "2023-01-03T12:00:00Z",
                 "2023-01-03T13:00:00Z"
@@ -370,7 +385,7 @@ class ActivityControllerIT {
 
     @Test
     void shouldReturn204_onDeleteActivity_whenValidRequest() throws Exception {
-        String activityId = createActivityAndGetId();
+        String activityId = createActivityWithDefaultCategoryAndGetId();
 
         mockMvc.perform(delete("/api/activities/" + activityId))
                 .andExpect(status().isNoContent())
@@ -379,7 +394,7 @@ class ActivityControllerIT {
 
     @Test
     void shouldNotShowDeletedActivity_afterDeleteActivity_whenValidRequest() throws Exception {
-        String activityId = createActivityAndGetId();
+        String activityId = createActivityWithDefaultCategoryAndGetId();
 
         mockMvc.perform(delete("/api/activities/" + activityId))
                 .andExpect(status().isNoContent());
@@ -405,18 +420,25 @@ class ActivityControllerIT {
 
     @Test
     void shouldReturn200AndDTO_onUpdateActivity_whenValidRequestWithoutLists() throws Exception {
-        String initialActivityPayloadAsJson = """
+        String categoryId1 = createCategoryAndGetId();
+        String categoryId2 = createCategoryAndGetId();
+        String activityId = createActivityAndGetId(String.format("""
                 {
                     "title": "Some Activity",
                     "notes": "Some notes",
                     "startAt": "2023-01-01T00:00:00Z",
                     "endAt": "2023-01-01T01:00:00Z",
-                    "categoryAllocations": [],
+                    "categoryAllocations": [
+                        {
+                            "percentage": 100,
+                            "categoryId": "%s",
+                            "subCategoryId": null
+                        }
+                    ],
                     "customValues": [],
                     "tagIds": []
                 }
-                """;
-        String activityId = createActivityAndGetId(initialActivityPayloadAsJson);
+                """, categoryId1));
         String updateActivityPayloadAsJson = String.format("""
                 {
                     "id": "%s",
@@ -424,9 +446,15 @@ class ActivityControllerIT {
                     "notes": "Some notes UPDATE",
                     "startAt": "2023-01-01T03:00:00Z",
                     "endAt": "2023-01-01T05:00:00Z",
-                    "categoryAllocations": []
+                    "categoryAllocations": [
+                        {
+                            "percentage": 100,
+                            "categoryId": "%s",
+                            "subCategoryId": null
+                        }
+                    ]
                 }
-                """, activityId);
+                """, activityId, categoryId2);
 
         mockMvc.perform(put("/api/activities/" + activityId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -526,16 +554,23 @@ class ActivityControllerIT {
 
     @Test
     void shouldReturn404_onUpdateActivity_whenActivityDoesNotExist() throws Exception {
-        String updateActivityPayloadAsJson = """
+        String categoryId = createCategoryAndGetId();
+        String updateActivityPayloadAsJson = String.format("""
                 {
                     "id": "0123456789ABC",
                     "title": "Some Activity UPDATE",
                     "notes": "Some notes UPDATE",
                     "startAt": "2023-01-01T03:00:00Z",
                     "endAt": "2023-01-01T05:00:00Z",
-                    "categoryAllocations": []
+                    "categoryAllocations": [
+                        {
+                            "percentage": 100,
+                            "categoryId": "%s",
+                            "subCategoryId": null
+                        }
+                    ]
                 }
-                """;
+                """, categoryId);
 
         mockMvc.perform(put("/api/activities/0123456789ABC")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -545,16 +580,23 @@ class ActivityControllerIT {
 
     @Test
     void shouldReturn400_onUpdateActivity_whenActivityIdIsInvalid() throws Exception {
-        String updateActivityPayloadAsJson = """
+        String categoryId = createCategoryAndGetId();
+        String updateActivityPayloadAsJson = String.format("""
                 {
                     "id": "invalid-id",
                     "title": "Some Activity UPDATE",
                     "notes": "Some notes UPDATE",
                     "startAt": "2023-01-01T03:00:00Z",
                     "endAt": "2023-01-01T05:00:00Z",
-                    "categoryAllocations": [],
+                    "categoryAllocations": [
+                        {
+                            "percentage": 100,
+                            "categoryId": "%s",
+                            "subCategoryId": null
+                        }
+                    ]
                 }
-                """;
+                """, categoryId);
         mockMvc.perform(put("/api/activities/invalid-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateActivityPayloadAsJson))
@@ -563,8 +605,9 @@ class ActivityControllerIT {
 
     @Test
     void shouldReturn400_onUpdateActivity_whenActivityIdDoesNotMatchPayloadActivityId() throws Exception {
-        String activityId1 = createActivityAndGetId();
-        String activityId2 = createActivityAndGetId();
+        String activityId1 = createActivityWithDefaultCategoryAndGetId();
+        String activityId2 = createActivityWithDefaultCategoryAndGetId();
+        String categoryId = createCategoryAndGetId();
 
         String updateActivityPayloadAsJson = String.format("""
                 {
@@ -573,33 +616,49 @@ class ActivityControllerIT {
                     "notes": "Some notes UPDATE",
                     "startAt": "2023-01-01T03:00:00Z",
                     "endAt": "2023-01-01T05:00:00Z",
-                    "categoryAllocations": [],
+                    "categoryAllocations": [
+                        {
+                            "percentage": 100,
+                            "categoryId": "%s",
+                            "subCategoryId": null
+                        }
+                    ]
                 }
-                """, activityId1);
+                """, activityId1, categoryId);
         mockMvc.perform(put("/api/activities/" + activityId2)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateActivityPayloadAsJson))
                 .andExpect(status().isBadRequest());
     }
 
-    private String createActivityWithTimesAndReturnId(String title, String startAt, String endAt) throws Exception {
-        String payloadAsJson = String.format("""
+    private String createActivityWithDefaultCategoryAndGetId() throws Exception {
+        String categoryId = createCategoryAndGetId();
+        return createActivityWithDefaultCategoryAndGetId("Some Activity", "2023-01-01T00:00:00Z", "2023-01-01T01:00:00Z", categoryId);
+    }
+
+    private String createActivityWithDefaultCategoryAndTimesAndGetId(String title, String startAt, String endAt) throws Exception {
+        String categoryId = createCategoryAndGetId();
+        return createActivityWithDefaultCategoryAndGetId(title, startAt, endAt, categoryId);
+    }
+
+    private String createActivityWithDefaultCategoryAndGetId(String title, String startAt, String endAt, String categoryId) throws Exception {
+        return createActivityAndGetId(String.format("""
                 {
                     "title": "%s",
                     "notes": "Some notes",
                     "startAt": "%s",
                     "endAt": "%s",
-                    "categoryAllocations": [],
+                    "categoryAllocations": [
+                        {
+                            "percentage": 100,
+                            "categoryId": "%s",
+                            "subCategoryId": null
+                        }
+                    ],
                     "customValues": [],
                     "tagIds": []
                 }
-                """, title, startAt, endAt);
-
-        return createActivityAndGetId(payloadAsJson);
-    }
-
-    private String createActivityAndGetId() throws Exception {
-        return createActivityAndGetId("irrelevant-activity-json-payload");
+                """, title, startAt, endAt, categoryId));
     }
 
     private String createActivityWithCategoryAndGetId(String categoryId) throws Exception {

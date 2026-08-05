@@ -64,8 +64,6 @@ class ControllerIT {
         createActivity("2001-01-01T00:00:00Z", "2001-01-01T12:00:00Z", allowedCategory);
         // Activity with the wrong category (4h)
         createActivity("2001-02-01T08:00:00Z", "2001-02-01T12:00:00Z", notAllowedCategory);
-        // Activity without a category (5h)
-        createActivity("2001-02-01T08:00:00Z", "2001-02-01T13:00:00Z", null);
         // Activity after filterRange (13h)
         createActivity("2001-02-11T00:00:00Z", "2001-02-11T13:00:00Z", allowedCategory);
         // Activity within filterRange and categoryFilter (1h)
