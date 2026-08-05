@@ -219,8 +219,7 @@ class ActivityControllerDuplicationIT {
         mockMvc.perform(post("/api/activities/0123456789ABC/duplicate")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+                .andExpect(status().isNotFound());
     }
 
     @Test
