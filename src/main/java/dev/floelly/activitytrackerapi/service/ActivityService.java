@@ -111,8 +111,9 @@ public class ActivityService {
         Activity activity = findByBusinessId(businessId);
         commandMapper.updateEntity(activityRequest, activity);
         mergeCategoryAllocations(activity, allocationRequests);
-        // TODO: update custom values       // NOSONAR - a future implementation option
-        // TODO: update tags                // NOSONAR - a future implementation option
+        mergeCustomValues(activity, activityRequest.customValues());
+        Set<Tag> tags = tagRepository.findByBusinessIdIn(activityRequest.tagIds());
+        activity.setTags(tags);
         activity.setUpdatedAt(Instant.now());
         return responseMapper.toResponse(activity);
     }
@@ -206,6 +207,41 @@ public class ActivityService {
                 ? allocation.getSubCategory().getBusinessId()
                 : null;
         return allocation.getCategory().getBusinessId() + "::" + subCategoryId;
+    }
+
+    private void mergeCustomValues(Activity activity, List<CreateActivityAttributeRequest> customValues) {
+        Set<ActivityAttribute> existingAttributes = activity.getAttributes();
+        if (existingAttributes == null) {
+            existingAttributes = new java.util.HashSet<>();
+            activity.setAttributes(existingAttributes);
+        }
+
+        if (customValues == null || customValues.isEmpty()) {
+            existingAttributes.clear();
+            return;
+        }
+
+        Map<String, ActivityAttribute> existingByLabel = existingAttributes.stream()
+                .collect(Collectors.toMap(ActivityAttribute::getLabel, Function.identity()));
+
+        Set<String> requestedLabels = customValues.stream()
+                .map(CreateActivityAttributeRequest::key)
+                .collect(Collectors.toSet());
+
+        existingAttributes.removeIf(attr -> !requestedLabels.contains(attr.getLabel()));
+
+        for (CreateActivityAttributeRequest request : customValues) {
+            ActivityAttribute attribute = commandMapper.toEntity(request);
+            ActivityAttribute existing = existingByLabel.get(request.key());
+            if (existing != null) {
+                existing.setValue(attribute.getValue());
+                existing.setShowInOverview(attribute.isShowInOverview());
+                existing.setSortOrder(attribute.getSortOrder());
+            } else {
+                attribute.setActivity(activity);
+                existingAttributes.add(attribute);
+            }
+        }
     }
 
     private NotFoundException generateNotFoundException(String resource, String id) {
