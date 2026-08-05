@@ -1,5 +1,7 @@
 package dev.floelly.activitytrackerapi.dto.request;
 
+import dev.floelly.activitytrackerapi.validation.ValidAllocationSum;
+import dev.floelly.activitytrackerapi.validation.ValidAllocations;
 import dev.floelly.activitytrackerapi.validation.ValidTSID;
 import dev.floelly.activitytrackerapi.validation.ValidTimeRange;
 import jakarta.validation.Valid;
@@ -29,6 +31,7 @@ public record UpdateActivityRequest(
         Instant endAt,
 
         @NotNull
+        @ValidAllocationSum @ValidAllocations
         List<@NotNull @Valid CreateCategoryAllocationRequest> categoryAllocations
 
 //        @NotNull

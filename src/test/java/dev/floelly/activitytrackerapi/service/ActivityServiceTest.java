@@ -218,10 +218,8 @@ class ActivityServiceTest {
         when(request.tagIds()).thenReturn(List.of("tag-1"));
         when(allocationRequest1.categoryId()).thenReturn("cat-1");
         when(allocationRequest1.subCategoryId()).thenReturn("sub-1");
-        when(allocationRequest1.percentage()).thenReturn(80);
         when(allocationRequest2.categoryId()).thenReturn("cat-2");
         when(allocationRequest2.subCategoryId()).thenReturn(null);
-        when(allocationRequest2.percentage()).thenReturn(20);
 
         TSID tsid = mock(TSID.class);
         when(tsidFactory.generate()).thenReturn(tsid);
@@ -256,42 +254,6 @@ class ActivityServiceTest {
     }
 
     @Test
-    void registerNewActivity_shouldThrowWhenCategoryAllocationSumIsNot100() {
-        CreateActivityRequest request = mock(CreateActivityRequest.class);
-
-        CreateCategoryAllocationRequest allocationRequest1 = mock(CreateCategoryAllocationRequest.class);
-        CreateCategoryAllocationRequest allocationRequest2 = mock(CreateCategoryAllocationRequest.class);
-
-        when(request.categoryAllocations()).thenReturn(List.of(allocationRequest1, allocationRequest2));
-        when(allocationRequest1.categoryId()).thenReturn("cat-1");
-        when(allocationRequest1.subCategoryId()).thenReturn(null);
-        when(allocationRequest1.percentage()).thenReturn(60);
-        when(allocationRequest2.categoryId()).thenReturn("cat-2");
-        when(allocationRequest2.subCategoryId()).thenReturn(null);
-        when(allocationRequest2.percentage()).thenReturn(30);
-
-        assertThatThrownBy(() -> service.registerNewActivity(request))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("100%");
-
-        verify(repository, never()).save(any());
-    }
-
-    @Test
-    void registerNewActivity_shouldThrowWhenAllocationKeysAreDuplicated() {
-        CreateActivityRequest request = mock(CreateActivityRequest.class);
-        CreateCategoryAllocationRequest allocationRequest1 = new CreateCategoryAllocationRequest(50, "cat-1", null);
-        CreateCategoryAllocationRequest allocationRequest2 = new CreateCategoryAllocationRequest(50, "cat-1", null);
-        when(request.categoryAllocations()).thenReturn(List.of(allocationRequest1, allocationRequest2));
-
-        assertThatThrownBy(() -> service.registerNewActivity(request))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Duplicate category allocation keys found.");
-
-        verify(repository, never()).save(any());
-    }
-
-    @Test
     void registerNewActivity_shouldThrowWhenCategoryNotFound() {
         CreateActivityRequest request = mock(CreateActivityRequest.class);
         Activity mappedActivity = new Activity();
@@ -302,13 +264,11 @@ class ActivityServiceTest {
 
         when(allocationRequest.categoryId()).thenReturn("missing-cat");
         when(allocationRequest.subCategoryId()).thenReturn(null);
-        when(allocationRequest.percentage()).thenReturn(100);
-
-        when(categoryRepository.findByBusinessId("missing-cat")).thenReturn(Optional.empty());
 
         TSID tsid = mock(TSID.class);
         when(tsidFactory.generate()).thenReturn(tsid);
-        when(tsid.toString()).thenReturn("act-tsid");
+
+        when(categoryRepository.findByBusinessId("missing-cat")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.registerNewActivity(request))
                 .isInstanceOf(NotFoundException.class)
@@ -329,14 +289,12 @@ class ActivityServiceTest {
 
         when(allocationRequest.categoryId()).thenReturn("known-cat");
         when(allocationRequest.subCategoryId()).thenReturn("missing-sub-cat");
-        when(allocationRequest.percentage()).thenReturn(100);
-
-        when(categoryRepository.findByBusinessId("known-cat")).thenReturn(Optional.of(new Category()));
-        when(subCategoryRepository.findByBusinessId("missing-sub-cat")).thenReturn(Optional.empty());
 
         TSID tsid = mock(TSID.class);
         when(tsidFactory.generate()).thenReturn(tsid);
-        when(tsid.toString()).thenReturn("act-tsid");
+
+        when(categoryRepository.findByBusinessId("known-cat")).thenReturn(Optional.of(new Category()));
+        when(subCategoryRepository.findByBusinessId("missing-sub-cat")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.registerNewActivity(request))
                 .isInstanceOf(NotFoundException.class)
@@ -367,15 +325,13 @@ class ActivityServiceTest {
         when(request.categoryAllocations()).thenReturn(List.of(allocationRequest));
         when(allocationRequest.categoryId()).thenReturn("cat-1");
         when(allocationRequest.subCategoryId()).thenReturn("sub-1");
-        when(allocationRequest.percentage()).thenReturn(100);
+
+        TSID tsid = mock(TSID.class);
+        when(tsidFactory.generate()).thenReturn(tsid);
 
         when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
         when(subCategoryRepository.findByBusinessId("sub-1")).thenReturn(Optional.of(subCategory));
         when(categoryService.isValidCategorySubCategoryRelation(category, subCategory)).thenReturn(false);
-
-        TSID tsid = mock(TSID.class);
-        when(tsidFactory.generate()).thenReturn(tsid);
-        when(tsid.toString()).thenReturn("act-tsid");
 
         assertThatThrownBy(() -> service.registerNewActivity(request))
                 .isInstanceOf(BadRequestException.class)
@@ -449,50 +405,6 @@ class ActivityServiceTest {
                 .hasMessageContaining(businessId);
 
         verify(repository, never()).delete((Activity) any());
-    }
-
-    @Test
-    void updateActivity_shouldThrowWhenAllocationSumIsNot100() {
-        String businessId = "act-1";
-        UpdateActivityRequest request = new UpdateActivityRequest(
-                businessId,
-                "Updated title",
-                "Updated notes",
-                Instant.parse("2026-05-26T08:00:00Z"),
-                Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(
-                        new CreateCategoryAllocationRequest(60, "cat-1", null),
-                        new CreateCategoryAllocationRequest(30, "cat-2", null)
-                )
-        );
-
-        assertThatThrownBy(() -> service.updateActivity(businessId, request))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("Sum of category allocations must be 100%");
-
-        verify(repository, never()).findByBusinessId(any());
-    }
-
-    @Test
-    void updateActivity_shouldThrowWhenAllocationKeysAreDuplicated() {
-        String businessId = "act-1";
-        UpdateActivityRequest request = new UpdateActivityRequest(
-                businessId,
-                "Updated title",
-                "Updated notes",
-                Instant.parse("2026-05-26T08:00:00Z"),
-                Instant.parse("2026-05-26T09:00:00Z"),
-                List.of(
-                        new CreateCategoryAllocationRequest(50, "cat-1", "sub-cat-1"),
-                        new CreateCategoryAllocationRequest(50, "cat-1", "sub-cat-1")
-                )
-        );
-
-        assertThatThrownBy(() -> service.updateActivity(businessId, request))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("Duplicate category allocation keys found.");
-
-        verify(repository, never()).findByBusinessId(any());
     }
 
     @Test
@@ -720,6 +632,7 @@ class ActivityServiceTest {
 
         Activity activity = new Activity();
         activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>());
 
         Category category = new Category();
         category.setBusinessId("cat-1");

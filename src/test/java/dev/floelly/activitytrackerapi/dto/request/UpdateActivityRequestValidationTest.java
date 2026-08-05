@@ -232,4 +232,46 @@ class UpdateActivityRequestValidationTest {
                 .extracting(v -> v.getPropertyPath().toString())
                 .contains("categoryAllocations");
     }
+
+    @Test
+    void categoryAllocationsSumNot100_hasViolation() {
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                "0123456789ABC",
+                "Some title",
+                "Some notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(50, "0123456789ABC", null),
+                        new CreateCategoryAllocationRequest(30, "123456789ABCD", null)
+                )
+        );
+
+        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(ConstraintViolation::getMessage)
+                .anySatisfy(path -> assertThat(path).contains("100%"));
+    }
+
+    @Test
+    void categoryAllocationsDuplicateKeys_hasViolation() {
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                "0123456789ABC",
+                "Some title",
+                "Some notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(50, "0123456789ABC", null),
+                        new CreateCategoryAllocationRequest(50, "0123456789ABC", null)
+                )
+        );
+
+        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(ConstraintViolation::getMessage)
+                .anySatisfy(path -> assertThat(path).contains("Duplicate"));
+    }
 }
