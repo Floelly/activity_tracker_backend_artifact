@@ -114,19 +114,18 @@ class ActivityCommandMapperTest {
 
     @Test
     void updateEntity_shouldReturnUnchangedEntityForNullRequest() {
-        Activity activity = new Activity(
-                1L,
-                "activity-id",
-                "Activity title",
-                "Activity notes",
-                Instant.parse("2023-01-01T00:00:00Z"),
-                Instant.parse("2023-01-01T01:00:00Z"),
-                Set.of(),
-                Set.of(),
-                Set.of(),
-                Instant.parse("2023-01-01T00:00:00Z"),
-                null
-        );
+        Activity activity = new Activity();
+        activity.setId(1L);
+        activity.setBusinessId("activity-id");
+        activity.setTitle("Activity title");
+        activity.setNotes("Activity notes");
+        activity.setStartAt(Instant.parse("2023-01-01T00:00:00Z"));
+        activity.setEndAt(Instant.parse("2023-01-01T01:00:00Z"));
+        activity.setCategoryAllocations(Set.of());
+        activity.setAttributes(Set.of());
+        activity.setTags(Set.of());
+        activity.setCreatedAt(Instant.parse("2023-01-01T00:00:00Z"));
+        activity.setUpdatedAt(null);
 
         mapper.updateEntity(null, activity);
 
@@ -153,19 +152,18 @@ class ActivityCommandMapperTest {
                 Instant.parse("2023-01-03T01:00:00Z"),
                 List.of(new CreateCategoryAllocationRequest(100, "ignored-anyways", null))
         );
-        Activity activity = new Activity(
-                1L,
-                "activity-id",
-                "Activity title",
-                "Activity notes",
-                Instant.parse("2023-01-01T00:00:00Z"),
-                Instant.parse("2023-01-01T01:00:00Z"),
-                Set.of(),
-                Set.of(),
-                Set.of(),
-                Instant.parse("2023-01-01T00:00:00Z"),
-                null
-        );
+        Activity activity = new Activity();
+        activity.setId(1L);
+        activity.setBusinessId("activity-id");
+        activity.setTitle("Activity title");
+        activity.setNotes("Activity notes");
+        activity.setStartAt(Instant.parse("2023-01-01T00:00:00Z"));
+        activity.setEndAt(Instant.parse("2023-01-01T01:00:00Z"));
+        activity.setCategoryAllocations(Set.of());
+        activity.setAttributes(Set.of());
+        activity.setTags(Set.of());
+        activity.setCreatedAt(Instant.parse("2023-01-01T00:00:00Z"));
+        activity.setUpdatedAt(null);
 
         mapper.updateEntity(activityDTO, activity);
 

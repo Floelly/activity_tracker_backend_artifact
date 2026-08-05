@@ -1,0 +1,1 @@
+cd /workspace && mvn test 2>&1

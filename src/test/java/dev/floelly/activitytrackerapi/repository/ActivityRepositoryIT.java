@@ -20,19 +20,17 @@ class ActivityRepositoryIT extends MySQLContainerInitializer {
 
     @Test
     void findByBusinessId_shouldReturnActivityWhenExists() {
-        Activity activity = new Activity(
-                null,
-                "activity-123",
-                "Morning Run",
-                "Some notes",
-                Instant.parse("2024-01-01T10:00:00Z"),
-                Instant.parse("2024-01-01T11:00:00Z"),
-                Set.of(),
-                Set.of(),
-                Set.of(),
-                Instant.now(),
-                null
-        );
+        Activity activity = new Activity();
+        activity.setBusinessId("activity-123");
+        activity.setTitle("Morning Run");
+        activity.setNotes("Some notes");
+        activity.setStartAt(Instant.parse("2024-01-01T10:00:00Z"));
+        activity.setEndAt(Instant.parse("2024-01-01T11:00:00Z"));
+        activity.setCategoryAllocations(Set.of());
+        activity.setAttributes(Set.of());
+        activity.setTags(Set.of());
+        activity.setCreatedAt(Instant.now());
+        activity.setUpdatedAt(null);
 
         Activity saved = activityRepository.save(activity);
 

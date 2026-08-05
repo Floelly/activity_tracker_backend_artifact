@@ -20,19 +20,19 @@ class ActivityResponseMapperTest {
     private ActivityResponseMapper mapper;
 
     private Activity createValidBaseActivity() {
-        return new Activity(
-                1L,
-                "business-id-1",
-                "title",
-                "notes",
-                Instant.now(),
-                Instant.now().plusSeconds(60),
-                Set.of(),
-                Set.of(),
-                Set.of(),
-                Instant.now().plusSeconds(120),
-                null
-        );
+        Activity activity = new Activity();
+        activity.setId(1L);
+        activity.setBusinessId("business-id-1");
+        activity.setTitle("title");
+        activity.setNotes("notes");
+        activity.setStartAt(Instant.now());
+        activity.setEndAt(Instant.now().plusSeconds(60));
+        activity.setCategoryAllocations(Set.of());
+        activity.setAttributes(Set.of());
+        activity.setTags(Set.of());
+        activity.setCreatedAt(Instant.now().plusSeconds(120));
+        activity.setUpdatedAt(null);
+        return activity;
     }
 
     @Test
@@ -232,32 +232,31 @@ class ActivityResponseMapperTest {
 
     @Test
     void toActivitiesResponse_shouldSortActivitiesByStartTime() {
-        Activity activity1 = new Activity(
-                1L,
-                "id-1",
-                "title-1",
-                "notes",
-                Instant.parse("2023-01-02T00:00:00Z"),
-                Instant.parse("2023-01-02T00:01:00Z"),
-                Set.of(),
-                Set.of(),
-                Set.of(),
-                Instant.now(),
-                null
-        );
-        Activity activity2 = new Activity(
-                1L,
-                "id-1",
-                "title-1",
-                "notes",
-                Instant.parse("2023-01-03T00:00:00Z"),
-                Instant.parse("2023-01-03T00:01:00Z"),
-                Set.of(),
-                Set.of(),
-                Set.of(),
-                Instant.now(),
-                null
-        );
+        Activity activity1 = new Activity();
+        activity1.setId(1L);
+        activity1.setBusinessId("id-1");
+        activity1.setTitle("title-1");
+        activity1.setNotes("notes");
+        activity1.setStartAt(Instant.parse("2023-01-02T00:00:00Z"));
+        activity1.setEndAt(Instant.parse("2023-01-02T00:01:00Z"));
+        activity1.setCategoryAllocations(Set.of());
+        activity1.setAttributes(Set.of());
+        activity1.setTags(Set.of());
+        activity1.setCreatedAt(Instant.now());
+        activity1.setUpdatedAt(null);
+
+        Activity activity2 = new Activity();
+        activity2.setId(1L);
+        activity2.setBusinessId("id-1");
+        activity2.setTitle("title-1");
+        activity2.setNotes("notes");
+        activity2.setStartAt(Instant.parse("2023-01-03T00:00:00Z"));
+        activity2.setEndAt(Instant.parse("2023-01-03T00:01:00Z"));
+        activity2.setCategoryAllocations(Set.of());
+        activity2.setAttributes(Set.of());
+        activity2.setTags(Set.of());
+        activity2.setCreatedAt(Instant.now());
+        activity2.setUpdatedAt(null);
 
         ActivitiesResponse response = mapper.toActivitiesResponse(new ArrayList<>(List.of(activity1, activity2)));
 
