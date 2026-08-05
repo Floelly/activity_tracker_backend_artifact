@@ -23,6 +23,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.Instant;
 import java.util.*;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
@@ -524,6 +525,40 @@ class ActivityServiceTest {
         verify(repository).findByBusinessId(businessId);
         verify(commandMapper).updateEntity(request, activity);
         verify(responseMapper).toResponse(activity);
+    }
+
+    @Test
+    void mergeCategoryAllocations_shouldNotCrashOnNewActivityCollections() {
+        String businessId = "act-1";
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+
+        Category category = new Category();
+        category.setBusinessId("cat-1");
+        category.setName("Sport");
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null))
+        );
+
+        ActivityResponse response = mock(ActivityResponse.class);
+        CategoryAllocation mappedAllocation = new CategoryAllocation();
+        mappedAllocation.setPercentage(100);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
+        when(commandMapper.toEntity(any(CreateCategoryAllocationRequest.class))).thenReturn(mappedAllocation);
+        when(responseMapper.toResponse(activity)).thenReturn(response);
+
+        assertThatCode(() -> service.updateActivity(businessId, request))
+                .doesNotThrowAnyException();
+        assertThat(activity.getCategoryAllocations()).hasSize(1);
     }
 
     @Test
