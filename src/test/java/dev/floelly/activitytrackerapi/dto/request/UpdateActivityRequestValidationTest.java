@@ -126,6 +126,24 @@ class UpdateActivityRequestValidationTest {
     }
 
     @Test
+    void nullTitle_hasViolationOnTitle() {
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                "0123456789123",
+                null,
+                "Some notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of()
+        );
+
+        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("title");
+    }
+
+    @Test
     void titleTooLong_hasViolation() {
         UpdateActivityRequest request = new UpdateActivityRequest(
                 "0123456789123",
