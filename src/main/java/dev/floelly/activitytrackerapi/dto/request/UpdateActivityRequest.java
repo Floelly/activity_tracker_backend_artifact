@@ -16,6 +16,7 @@ public record UpdateActivityRequest(
         @ValidTSID
         String id,
 
+        @NotNull
         @Size(max = 120)
         String title,
 
