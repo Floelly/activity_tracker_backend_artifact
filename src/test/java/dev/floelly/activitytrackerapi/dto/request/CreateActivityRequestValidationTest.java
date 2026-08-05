@@ -360,4 +360,31 @@ class CreateActivityRequestValidationTest {
                 .extracting(ConstraintViolation::getPropertyPath)
                 .anySatisfy(path -> assertThat(path.toString()).startsWith("tagIds"));
     }
+
+    @Test
+    void emptyCategoryAllocations_hasViolation() {
+        var request = new CreateActivityRequest(
+                "My Activity",
+                "Some notes",
+                Instant.parse("2024-01-01T10:00:00Z"),
+                Instant.parse("2024-01-01T11:00:00Z"),
+                List.of(),
+                List.of(
+                        new CreateActivityAttributeRequest(
+                                "priority",
+                                "high",
+                                Boolean.TRUE,
+                                0
+                        )
+                ),
+                List.of("1A2B3C4D5E6F7")
+        );
+
+        Set<ConstraintViolation<CreateActivityRequest>> violations =
+                validator.validate(request);
+
+        assertThat(violations)
+                .extracting(ConstraintViolation::getPropertyPath)
+                .anySatisfy(path -> assertThat(path).hasToString("categoryAllocations"));
+    }
 }

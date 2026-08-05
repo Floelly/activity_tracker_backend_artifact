@@ -713,4 +713,38 @@ class ActivityServiceTest {
                 .hasMessageContaining("SubCategory")
                 .hasMessageContaining("is not related to Category");
     }
+
+    @Test
+    void registerNewActivity_shouldRejectEmptyAllocations() {
+        CreateActivityRequest request = mock(CreateActivityRequest.class);
+
+        when(request.categoryAllocations()).thenReturn(List.of());
+        when(request.customValues()).thenReturn(List.of());
+        when(request.tagIds()).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.registerNewActivity(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("100%");
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void updateActivity_shouldRejectEmptyAllocations() {
+        String businessId = "act-1";
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of()
+        );
+
+        assertThatThrownBy(() -> service.updateActivity(businessId, request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("100%");
+
+        verify(repository, never()).findByBusinessId(any());
+    }
 }

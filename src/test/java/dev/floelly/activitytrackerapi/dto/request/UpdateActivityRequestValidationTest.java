@@ -232,4 +232,22 @@ class UpdateActivityRequestValidationTest {
                 .extracting(v -> v.getPropertyPath().toString())
                 .contains("categoryAllocations");
     }
+
+    @Test
+    void emptyCategoryAllocations_hasViolation() {
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                "0123456789ABC",
+                "Some title",
+                "Some notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of()
+        );
+
+        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("categoryAllocations");
+    }
 }
