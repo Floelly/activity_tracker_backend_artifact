@@ -562,6 +562,69 @@ class ActivityControllerIT {
     }
 
     @Test
+    void shouldReturn400_onPostActivity_whenAllocationSumNot100() throws Exception {
+        String categoryId1 = createCategoryAndGetId();
+        String categoryId2 = createCategoryAndGetId();
+
+        mockMvc.perform(post("/api/activities")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("""
+                                {
+                                    "title": "Some Activity",
+                                    "notes": "Some notes",
+                                    "startAt": "2023-01-01T00:00:00Z",
+                                    "endAt": "2023-01-01T01:00:00Z",
+                                    "categoryAllocations": [
+                                        {
+                                            "percentage": 60,
+                                            "categoryId": "%s",
+                                            "subCategoryId": null
+                                        },
+                                        {
+                                            "percentage": 30,
+                                            "categoryId": "%s",
+                                            "subCategoryId": null
+                                        }
+                                    ],
+                                    "customValues": [],
+                                    "tagIds": []
+                                }
+                                """, categoryId1, categoryId2)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400_onPostActivity_whenAllocationKeysAreDuplicated() throws Exception {
+        String categoryId1 = createCategoryAndGetId();
+
+        mockMvc.perform(post("/api/activities")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("""
+                                {
+                                    "title": "Some Activity",
+                                    "notes": "Some notes",
+                                    "startAt": "2023-01-01T00:00:00Z",
+                                    "endAt": "2023-01-01T01:00:00Z",
+                                    "categoryAllocations": [
+                                        {
+                                            "percentage": 50,
+                                            "categoryId": "%s",
+                                            "subCategoryId": null
+                                        },
+                                        {
+                                            "percentage": 50,
+                                            "categoryId": "%s",
+                                            "subCategoryId": null
+                                        }
+                                    ],
+                                    "customValues": [],
+                                    "tagIds": []
+                                }
+                                """, categoryId1, categoryId1)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void shouldReturn400_onUpdateActivity_whenActivityIdDoesNotMatchPayloadActivityId() throws Exception {
         String activityId1 = createActivityAndGetId();
         String activityId2 = createActivityAndGetId();

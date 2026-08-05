@@ -35,7 +35,7 @@ class CreateActivityRequestValidationTest {
     @Test
     void validRequest_hasNoViolations() {
         var categoryAllocation = new CreateCategoryAllocationRequest(
-                50,
+                100,
                 "0A1B2C3D4E5F6",
                 null
         );
@@ -327,6 +327,72 @@ class CreateActivityRequestValidationTest {
         assertThat(violations)
                 .extracting(ConstraintViolation::getPropertyPath)
                 .anySatisfy(path -> assertThat(path).hasToString("tagIds"));
+    }
+
+    @Test
+    void categoryAllocationsSumNot100_hasViolationOnCategoryAllocations() {
+        var request = new CreateActivityRequest(
+                "My Activity",
+                "Some notes",
+                Instant.parse("2024-01-01T10:00:00Z"),
+                Instant.parse("2024-01-01T11:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(
+                                60,
+                                "0A1B2C3D4E5F6",
+                                null
+                        ),
+                        new CreateCategoryAllocationRequest(
+                                30,
+                                "1A2B3C4D5E6F7",
+                                null
+                        )
+                ),
+                List.of(),
+                List.of()
+        );
+
+        var violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(ConstraintViolation::getPropertyPath)
+                .anySatisfy(path -> assertThat(path).hasToString("categoryAllocations"));
+        assertThat(violations)
+                .extracting(ConstraintViolation::getMessageTemplate)
+                .anySatisfy(message -> assertThat(message).contains("100%"));
+    }
+
+    @Test
+    void categoryAllocationsWithDuplicateKeys_hasViolationOnCategoryAllocations() {
+        var request = new CreateActivityRequest(
+                "My Activity",
+                "Some notes",
+                Instant.parse("2024-01-01T10:00:00Z"),
+                Instant.parse("2024-01-01T11:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(
+                                50,
+                                "0A1B2C3D4E5F6",
+                                null
+                        ),
+                        new CreateCategoryAllocationRequest(
+                                50,
+                                "0A1B2C3D4E5F6",
+                                null
+                        )
+                ),
+                List.of(),
+                List.of()
+        );
+
+        var violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(ConstraintViolation::getPropertyPath)
+                .anySatisfy(path -> assertThat(path).hasToString("categoryAllocations"));
+        assertThat(violations)
+                .extracting(ConstraintViolation::getMessageTemplate)
+                .anySatisfy(message -> assertThat(message).contains("Duplicate"));
     }
 
     @Test

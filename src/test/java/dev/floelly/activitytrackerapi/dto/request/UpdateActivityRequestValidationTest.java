@@ -216,6 +216,54 @@ class UpdateActivityRequestValidationTest {
     }
 
     @Test
+    void categoryAllocationsSumNot100_hasViolationOnCategoryAllocations() {
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                "0123456789ABC",
+                "Some title",
+                "Some notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(60, "0123456789000", null),
+                        new CreateCategoryAllocationRequest(30, "0123456789001", null)
+                )
+        );
+
+        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("categoryAllocations");
+        assertThat(violations)
+                .extracting(ConstraintViolation::getMessageTemplate)
+                .anySatisfy(message -> assertThat(message).contains("100%"));
+    }
+
+    @Test
+    void categoryAllocationsWithDuplicateKeys_hasViolationOnCategoryAllocations() {
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                "0123456789ABC",
+                "Some title",
+                "Some notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(
+                        new CreateCategoryAllocationRequest(50, "0123456789000", null),
+                        new CreateCategoryAllocationRequest(50, "0123456789000", null)
+                )
+        );
+
+        Set<ConstraintViolation<UpdateActivityRequest>> violations = validator.validate(request);
+
+        assertThat(violations)
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("categoryAllocations");
+        assertThat(violations)
+                .extracting(ConstraintViolation::getMessageTemplate)
+                .anySatisfy(message -> assertThat(message).contains("Duplicate"));
+    }
+
+    @Test
     void nullCategoryAllocation_hasViolation() {
         UpdateActivityRequest request = new UpdateActivityRequest(
                 "0123456789123",
