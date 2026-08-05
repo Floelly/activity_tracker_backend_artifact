@@ -66,6 +66,7 @@ public class ActivityService {
 
     @Transactional
     public ActivityResponse registerNewActivity(CreateActivityRequest activityRequest) {
+        validateCustomValueLabels(activityRequest.customValues());
         if (!activityRequest.categoryAllocations().isEmpty()) {
             validateAllocations(activityRequest.categoryAllocations());
             validateAllocationSum(activityRequest.categoryAllocations());
@@ -101,6 +102,7 @@ public class ActivityService {
 
     @Transactional
     public ActivityResponse updateActivity(String businessId, UpdateActivityRequest activityRequest) {
+        validateCustomValueLabels(activityRequest.customValues());
         if (!activityRequest.id().equals(businessId)) {
             throw new BadRequestException("Activity id in request does not match the path variable");
         }
@@ -216,6 +218,16 @@ public class ActivityService {
                 .mapToInt(CreateCategoryAllocationRequest::percentage).sum();
         if (percentageSum != 100) {
             throw new BadRequestException("Sum of category allocations must be 100%");
+        }
+    }
+
+    private void validateCustomValueLabels(List<CreateActivityAttributeRequest> attributeRequests) {
+        long distinctCount = attributeRequests.stream()
+                .map(CreateActivityAttributeRequest::key)
+                .distinct()
+                .count();
+        if (distinctCount != attributeRequests.size()) {
+            throw new BadRequestException("Duplicate custom value labels found");
         }
     }
 
