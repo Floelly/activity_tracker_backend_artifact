@@ -123,10 +123,9 @@ class ActivityCommandMapperTest {
                 Instant.parse("2023-01-01T01:00:00Z"),
                 Set.of(),
                 Set.of(),
-                Set.of(),
-                Instant.parse("2023-01-01T00:00:00Z"),
-                null
+                Set.of()
         );
+        activity.setCreatedAt(Instant.parse("2023-01-01T00:00:00Z"));
 
         mapper.updateEntity(null, activity);
 
@@ -162,10 +161,9 @@ class ActivityCommandMapperTest {
                 Instant.parse("2023-01-01T01:00:00Z"),
                 Set.of(),
                 Set.of(),
-                Set.of(),
-                Instant.parse("2023-01-01T00:00:00Z"),
-                null
+                Set.of()
         );
+        activity.setCreatedAt(Instant.parse("2023-01-01T00:00:00Z"));
 
         mapper.updateEntity(activityDTO, activity);
 

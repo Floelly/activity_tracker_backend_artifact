@@ -25,7 +25,7 @@ import java.util.Set;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Activity {
+public class Activity extends BaseAuditEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -62,10 +62,4 @@ public class Activity {
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
     private Set<Tag> tags;
-
-    @NotNull
-    @Column(nullable = false)
-    private Instant createdAt;
-
-    private Instant updatedAt;
 }

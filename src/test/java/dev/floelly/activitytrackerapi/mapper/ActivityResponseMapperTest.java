@@ -29,9 +29,7 @@ class ActivityResponseMapperTest {
                 Instant.now().plusSeconds(60),
                 Set.of(),
                 Set.of(),
-                Set.of(),
-                Instant.now().plusSeconds(120),
-                null
+                Set.of()
         );
     }
 
@@ -241,9 +239,7 @@ class ActivityResponseMapperTest {
                 Instant.parse("2023-01-02T00:01:00Z"),
                 Set.of(),
                 Set.of(),
-                Set.of(),
-                Instant.now(),
-                null
+                Set.of()
         );
         Activity activity2 = new Activity(
                 1L,
@@ -254,9 +250,7 @@ class ActivityResponseMapperTest {
                 Instant.parse("2023-01-03T00:01:00Z"),
                 Set.of(),
                 Set.of(),
-                Set.of(),
-                Instant.now(),
-                null
+                Set.of()
         );
 
         ActivitiesResponse response = mapper.toActivitiesResponse(new ArrayList<>(List.of(activity1, activity2)));

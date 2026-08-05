@@ -29,10 +29,9 @@ class ActivityRepositoryIT extends MySQLContainerInitializer {
                 Instant.parse("2024-01-01T11:00:00Z"),
                 Set.of(),
                 Set.of(),
-                Set.of(),
-                Instant.now(),
-                null
+                Set.of()
         );
+        activity.setCreatedAt(Instant.now());
 
         Activity saved = activityRepository.save(activity);
 
