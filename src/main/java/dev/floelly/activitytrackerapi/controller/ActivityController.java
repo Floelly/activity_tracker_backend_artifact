@@ -2,6 +2,7 @@ package dev.floelly.activitytrackerapi.controller;
 
 import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
+import dev.floelly.activitytrackerapi.dto.request.DuplicateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.ActivitiesResponse;
 import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
@@ -45,6 +46,14 @@ public class ActivityController {
     @PostMapping
     public ResponseEntity<ActivityResponse> postNewActivity(@RequestBody @Valid CreateActivityRequest activityRequest) {
         ActivityResponse response = activityService.registerNewActivity(activityRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/{businessId}/duplicate")
+    public ResponseEntity<ActivityResponse> duplicateActivity(
+            @PathVariable @ValidTSID String businessId,
+            @RequestBody @Valid DuplicateActivityRequest request) {
+        ActivityResponse response = activityService.duplicateActivity(businessId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

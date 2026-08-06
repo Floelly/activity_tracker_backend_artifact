@@ -4,6 +4,7 @@ import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityAttributeRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateCategoryAllocationRequest;
+import dev.floelly.activitytrackerapi.dto.request.DuplicateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.ActivitiesResponse;
 import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
@@ -28,7 +29,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -96,6 +99,72 @@ public class ActivityService {
     public void deleteActivity(String businessId) {
         Activity activity = findByBusinessId(businessId);
         repository.delete(activity);
+    }
+
+    @Transactional
+    public ActivityResponse duplicateActivity(String businessId, DuplicateActivityRequest request) {
+        Activity source = findByBusinessId(businessId);
+
+        if (request.endAt() != null && request.startAt() == null) {
+            throw new BadRequestException("endAt cannot be provided without startAt");
+        }
+
+        Instant newStartAt;
+        Instant newEndAt;
+
+        if (request.startAt() == null && request.endAt() == null) {
+            newStartAt = source.getStartAt();
+            newEndAt = source.getEndAt();
+        } else if (request.endAt() == null) {
+            long durationSeconds = Duration.between(source.getStartAt(), source.getEndAt()).getSeconds();
+            newStartAt = request.startAt();
+            newEndAt = newStartAt.plusSeconds(durationSeconds);
+        } else {
+            newStartAt = request.startAt();
+            newEndAt = request.endAt();
+        }
+
+        Activity newActivity = new Activity();
+        newActivity.setBusinessId(tsidFactory.generate().toString());
+        newActivity.setTitle(source.getTitle());
+        newActivity.setNotes(source.getNotes());
+        newActivity.setStartAt(newStartAt);
+        newActivity.setEndAt(newEndAt);
+        newActivity.setCreatedAt(Instant.now());
+
+        Set<CategoryAllocation> newAllocations = new HashSet<>();
+        if (source.getCategoryAllocations() != null) {
+            for (CategoryAllocation allocation : source.getCategoryAllocations()) {
+                CategoryAllocation newAllocation = new CategoryAllocation();
+                newAllocation.setPercentage(allocation.getPercentage());
+                newAllocation.setCategory(allocation.getCategory());
+                newAllocation.setSubCategory(allocation.getSubCategory());
+                newAllocation.setActivity(newActivity);
+                newAllocations.add(newAllocation);
+            }
+        }
+        newActivity.setCategoryAllocations(newAllocations);
+
+        Set<ActivityAttribute> newAttributes = new HashSet<>();
+        if (source.getAttributes() != null) {
+            for (ActivityAttribute attribute : source.getAttributes()) {
+                ActivityAttribute newAttribute = new ActivityAttribute();
+                newAttribute.setLabel(attribute.getLabel());
+                newAttribute.setValue(attribute.getValue());
+                newAttribute.setShowInOverview(attribute.isShowInOverview());
+                newAttribute.setSortOrder(attribute.getSortOrder());
+                newAttribute.setActivity(newActivity);
+                newAttributes.add(newAttribute);
+            }
+        }
+        newActivity.setAttributes(newAttributes);
+
+        Set<Tag> tags = new HashSet<>(source.getTags());
+        newActivity.setTags(tags);
+
+        repository.save(newActivity);
+
+        return responseMapper.toResponse(newActivity);
     }
 
     @Transactional

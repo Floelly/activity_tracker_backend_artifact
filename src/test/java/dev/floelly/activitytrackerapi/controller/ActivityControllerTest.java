@@ -4,6 +4,8 @@ import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.*;
+import dev.floelly.activitytrackerapi.dto.request.DuplicateActivityRequest;
+import dev.floelly.activitytrackerapi.exception.BadRequestException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
 import dev.floelly.activitytrackerapi.service.ActivityService;
 import org.junit.jupiter.api.Test;
@@ -467,5 +469,86 @@ class ActivityControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(activityService, never()).updateActivity(anyString(), any(UpdateActivityRequest.class));
+    }
+
+    // ─── DuplicateActivity tests ────────────────────────────────────────────────
+
+    @Test
+    void duplicateActivity_shouldReturnCreatedAndCallService() throws Exception {
+        String businessId = "0123456789ABC";
+        ActivityResponse response = new ActivityResponse(
+                "new-activity-id",
+                "Duplicated Title",
+                "Duplicated notes",
+                Instant.parse("2024-01-01T10:00:00Z"),
+                Instant.parse("2024-01-01T11:00:00Z"),
+                3600,
+                List.of(),
+                List.of(),
+                List.of(),
+                Instant.now(),
+                null
+        );
+
+        when(activityService.duplicateActivity(eq(businessId), any(DuplicateActivityRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/activities/" + businessId + "/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value("new-activity-id"))
+                .andExpect(jsonPath("$.title").value("Duplicated Title"))
+                .andExpect(jsonPath("$.durationInSeconds").value(3600));
+
+        ArgumentCaptor<DuplicateActivityRequest> requestCaptor =
+                ArgumentCaptor.forClass(DuplicateActivityRequest.class);
+        verify(activityService).duplicateActivity(eq(businessId), requestCaptor.capture());
+        DuplicateActivityRequest captured = requestCaptor.getValue();
+        assertThat(captured.startAt()).isNull();
+        assertThat(captured.endAt()).isNull();
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnBadRequest_whenActivityIdIsInvalid() throws Exception {
+        mockMvc.perform(post("/api/activities/invalid-id/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).duplicateActivity(anyString(), any(DuplicateActivityRequest.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnNotFound_whenServiceThrowsNotFoundException() throws Exception {
+        String businessId = "0123456789ABC";
+        NotFoundException exception = new NotFoundException("Activity not found");
+
+        when(activityService.duplicateActivity(eq(businessId), any(DuplicateActivityRequest.class)))
+                .thenThrow(exception);
+
+        mockMvc.perform(post("/api/activities/" + businessId + "/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isNotFound());
+
+        verify(activityService).duplicateActivity(eq(businessId), any(DuplicateActivityRequest.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnBadRequest_whenServiceThrowsBadRequestException() throws Exception {
+        String businessId = "0123456789ABC";
+        BadRequestException exception = new BadRequestException("endAt cannot be provided without startAt");
+
+        when(activityService.duplicateActivity(eq(businessId), any(DuplicateActivityRequest.class)))
+                .thenThrow(exception);
+
+        mockMvc.perform(post("/api/activities/" + businessId + "/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService).duplicateActivity(eq(businessId), any(DuplicateActivityRequest.class));
     }
 }
