@@ -8,6 +8,7 @@ import jakarta.persistence.criteria.Predicate;
 import lombok.experimental.UtilityClass;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +37,30 @@ public final class ActivitySpecifications {
 
                 predicates.add(categoryJoin.get("businessId").in(filter.category()));
                 query.distinct(true);
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    public static Specification<Activity> withExportFilter(String categoryId, Instant startDate, Instant endDate) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (categoryId != null && !categoryId.isBlank()) {
+                Join<Object, Object> categoryAllocationJoin = root.join("categoryAllocations", JoinType.INNER);
+                Join<Object, Object> categoryJoin = categoryAllocationJoin.join("category", JoinType.INNER);
+
+                predicates.add(cb.equal(categoryJoin.get("businessId"), categoryId));
+                query.distinct(true);
+            }
+
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("startAt"), startDate));
+            }
+
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("endAt"), endDate));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
