@@ -29,4 +29,15 @@ public interface TagResponseMapper {
         }
         return new TagsResponse(toResponseList(tags));
     }
+
+    default List<TagResponse> toSearchResponseList(List<Tag> tags) {
+        return tags.stream()
+                .sorted(java.util.Comparator.comparing(Tag::getLabel))
+                .map(this::toResponse)
+                .toList();
+    }
+
+    default TagsResponse toSearchTagsResponse(List<Tag> tags) {
+        return new TagsResponse(toSearchResponseList(tags));
+    }
 }

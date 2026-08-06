@@ -16,6 +16,7 @@ import java.util.List;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -114,7 +115,7 @@ class TagControllerTest {
                 new TagResponse("tag-2", "Work", "#3b82f6", "Work related tag", 1)
         ));
 
-        when(tagService.findAllTags()).thenReturn(response);
+        when(tagService.searchTags(any(), anyInt())).thenReturn(response);
 
         mockMvc.perform(get("/api/tags"))
                 .andExpect(status().isOk())
@@ -127,14 +128,14 @@ class TagControllerTest {
                 .andExpect(jsonPath("$.tags[1].description").value("Work related tag"))
                 .andExpect(jsonPath("$.tags[1].sortOrder").value(1));
 
-        verify(tagService).findAllTags();
+        verify(tagService).searchTags(any(), anyInt());
     }
 
     @Test
     void getAllTags_shouldReturnOk_OnEmptyList() throws Exception {
         TagsResponse response = new TagsResponse(List.of());
 
-        when(tagService.findAllTags()).thenReturn(response);
+        when(tagService.searchTags(any(), anyInt())).thenReturn(response);
 
         mockMvc.perform(get("/api/tags"))
                 .andExpect(status().isOk())
@@ -142,6 +143,6 @@ class TagControllerTest {
                 .andExpect(jsonPath("$.tags").isArray())
                 .andExpect(jsonPath("$.tags.length()").value(0));
 
-        verify(tagService).findAllTags();
+        verify(tagService).searchTags(any(), anyInt());
     }
 }

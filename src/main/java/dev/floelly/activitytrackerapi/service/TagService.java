@@ -7,8 +7,12 @@ import dev.floelly.activitytrackerapi.entity.Tag;
 import dev.floelly.activitytrackerapi.mapper.TagCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.TagResponseMapper;
 import dev.floelly.activitytrackerapi.repository.TagRepository;
+import dev.floelly.activitytrackerapi.repository.TagSpecifications;
 import io.hypersistence.tsid.TSID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +32,20 @@ public class TagService {
     public TagsResponse findAllTags() {
         List<Tag> tags = repository.findAll();
         return responseMapper.toTagsResponse(tags);
+    }
+
+    @Transactional(readOnly = true)
+    public TagsResponse searchTags(String query, int limit) {
+        Specification<Tag> specification;
+        if (query == null || query.trim().isEmpty()) {
+            specification = Specification.where(null);
+        } else {
+            specification = TagSpecifications.labelContains(query.trim());
+        }
+
+        PageRequest pageable = PageRequest.of(0, limit, Sort.by("label"));
+        List<Tag> tags = repository.findAll(specification, pageable).getContent();
+        return responseMapper.toSearchTagsResponse(tags);
     }
 
     @Transactional
