@@ -42,7 +42,7 @@ class TagResponseMapperTest {
     }
 
     @Test
-    void toTagsResponse_shouldSortTagsBySortOrderAndLabel() {
+    void toTagsResponse_shouldSortTagsByLabel() {
         Tag tag1 = new Tag(
                 1L,
                 "businessId1",
@@ -78,7 +78,7 @@ class TagResponseMapperTest {
         assertThat(response.tags()).isNotEmpty();
         assertThat(response.tags()).hasSize(4);
         assertThat(response.tags().stream().map(TagResponse::label))
-                .containsExactly("Morning Run D", "Morning Run A", "Morning Run B", "Morning Run C");
+                .containsExactly("Morning Run A", "Morning Run B", "Morning Run C", "Morning Run D");
     }
 
     @Test

@@ -144,4 +144,69 @@ class TagControllerTest {
 
         verify(tagService).findAllTags();
     }
+
+    @Test
+    void getAllTags_shouldCallSearchTags_whenQueryProvided() throws Exception {
+        TagsResponse response = new TagsResponse(List.of());
+
+        when(tagService.searchTags("Morning", 10)).thenReturn(response);
+
+        mockMvc.perform(get("/api/tags")
+                        .param("query", "  Morning  "))
+                .andExpect(status().isOk());
+
+        verify(tagService).searchTags("Morning", 10);
+    }
+
+    @Test
+    void getAllTags_shouldCallFindAllTagsWithLimit_whenOnlyLimitProvided() throws Exception {
+        TagsResponse response = new TagsResponse(List.of());
+
+        when(tagService.findAllTags(5)).thenReturn(response);
+
+        mockMvc.perform(get("/api/tags")
+                        .param("limit", "5"))
+                .andExpect(status().isOk());
+
+        verify(tagService).findAllTags(5);
+    }
+
+    @Test
+    void getAllTags_shouldCallFindAllTagsWithLimit_whenEmptyQueryProvided() throws Exception {
+        TagsResponse response = new TagsResponse(List.of());
+
+        when(tagService.findAllTags(5)).thenReturn(response);
+
+        mockMvc.perform(get("/api/tags")
+                        .param("query", "")
+                        .param("limit", "5"))
+                .andExpect(status().isOk());
+
+        verify(tagService).findAllTags(5);
+    }
+
+    @Test
+    void getAllTags_shouldReturnBadRequest_whenLimitBelowOne() throws Exception {
+        mockMvc.perform(get("/api/tags")
+                        .param("limit", "0"))
+                .andExpect(status().isBadRequest());
+
+        verify(tagService, never()).findAllTags();
+        verify(tagService, never()).findAllTags(anyInt());
+        verify(tagService, never()).searchTags(anyString(), anyInt());
+    }
+
+    @Test
+    void getAllTags_shouldReturnBadRequest_whenLimitExceedsMax() throws Exception {
+        mockMvc.perform(get("/api/tags")
+                        .param("limit", "101"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getAllTags_shouldReturnBadRequest_whenQueryExceedsMaxLength() throws Exception {
+        mockMvc.perform(get("/api/tags")
+                        .param("query", "x".repeat(51)))
+                .andExpect(status().isBadRequest());
+    }
 }

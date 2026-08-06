@@ -14,10 +14,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,14 +45,14 @@ class TagServiceTest {
         List<Tag> tags = List.of(tag1, tag2);
         TagsResponse expectedResponse = mock(TagsResponse.class);
 
-        when(repository.findAll()).thenReturn(tags);
-        when(responseMapper.toTagsResponse(tags)).thenReturn(expectedResponse);
+        when(repository.findAll(any(Sort.class))).thenReturn(tags);
+        when(responseMapper.toTagsResponse(anyList())).thenReturn(expectedResponse);
 
         TagsResponse result = service.findAllTags();
 
         assertThat(result).isSameAs(expectedResponse);
-        verify(repository).findAll();
-        verify(responseMapper).toTagsResponse(tags);
+        verify(repository).findAll(any(Sort.class));
+        verify(responseMapper).toTagsResponse(anyList());
         verifyNoMoreInteractions(repository, responseMapper);
     }
 

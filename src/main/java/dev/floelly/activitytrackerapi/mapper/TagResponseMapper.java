@@ -18,7 +18,7 @@ public interface TagResponseMapper {
 
     default List<TagResponse> toResponseList(Iterable<Tag> tags) {
         return StreamSupport.stream(tags.spliterator(), false)
-                .sorted(Comparator.comparingInt(Tag::getSortOrder).thenComparing(Tag::getLabel))
+                .sorted(Comparator.comparing(Tag::getLabel))
                 .map(this::toResponse)
                 .toList();
     }

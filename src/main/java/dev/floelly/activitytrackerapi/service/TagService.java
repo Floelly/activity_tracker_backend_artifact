@@ -7,8 +7,10 @@ import dev.floelly.activitytrackerapi.entity.Tag;
 import dev.floelly.activitytrackerapi.mapper.TagCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.TagResponseMapper;
 import dev.floelly.activitytrackerapi.repository.TagRepository;
+import dev.floelly.activitytrackerapi.repository.TagSpecifications;
 import io.hypersistence.tsid.TSID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,8 +28,19 @@ public class TagService {
 
     @Transactional(readOnly = true)
     public TagsResponse findAllTags() {
-        List<Tag> tags = repository.findAll();
-        return responseMapper.toTagsResponse(tags);
+        return findAllTags(10);
+    }
+
+    @Transactional(readOnly = true)
+    public TagsResponse findAllTags(int limit) {
+        List<Tag> tags = repository.findAll(Sort.by("label"));
+        return responseMapper.toTagsResponse(tags.stream().limit(limit).toList());
+    }
+
+    @Transactional(readOnly = true)
+    public TagsResponse searchTags(String query, int limit) {
+        List<Tag> tags = repository.findAll(TagSpecifications.labelContains(query), Sort.by("label"));
+        return responseMapper.toTagsResponse(tags.stream().limit(limit).toList());
     }
 
     @Transactional
