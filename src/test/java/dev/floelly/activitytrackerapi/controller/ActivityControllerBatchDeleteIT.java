@@ -1,6 +1,7 @@
 package dev.floelly.activitytrackerapi.controller;
 
 import dev.floelly.activitytrackerapi.TestcontainersConfiguration;
+import dev.floelly.activitytrackerapi.dto.request.BatchDeleteRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,9 +15,10 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -30,33 +32,35 @@ class ActivityControllerBatchDeleteIT {
     ObjectMapper objectMapper;
 
     @Test
-    void shouldReturn204_onBatchDeleteActivities_whenAllIdsExist() throws Exception {
+    void shouldReturn200WithSummary_onBatchDeleteActivities_whenAllIdsExist() throws Exception {
         List<String> activityIds = createMultipleActivitiesAndGetIds(3);
 
-        mockMvc.perform(post("/api/activities/batch-delete")
+        mockMvc.perform(delete("/api/activities/batch")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new BatchDeleteRequestPayload(activityIds))))
-                .andExpect(status().isNoContent())
-                .andExpect(content().string(""));
+                                new BatchDeleteRequest(activityIds))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalRequested").value(3))
+                .andExpect(jsonPath("$.totalDeleted").value(3))
+                .andExpect(jsonPath("$.failed").isEmpty());
     }
 
     @Test
     void shouldDeleteAllRequestedActivities_onBatchDeleteActivities_whenAllIdsExist() throws Exception {
         List<String> activityIds = createMultipleActivitiesAndGetIds(3);
 
-        mockMvc.perform(post("/api/activities/batch-delete")
+        mockMvc.perform(delete("/api/activities/batch")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new BatchDeleteRequestPayload(activityIds))))
-                .andExpect(status().isNoContent());
+                                new BatchDeleteRequest(activityIds))))
+                .andExpect(status().isOk());
 
         verifyActivitiesDeleted(activityIds);
     }
 
     @Test
     void shouldReturn400_onBatchDeleteActivities_whenActivityIdsEmpty() throws Exception {
-        mockMvc.perform(post("/api/activities/batch-delete")
+        mockMvc.perform(delete("/api/activities/batch")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -71,43 +75,49 @@ class ActivityControllerBatchDeleteIT {
         String validId = createActivityAndGetId();
         String invalidId = "invalid-id";
 
-        mockMvc.perform(post("/api/activities/batch-delete")
+        mockMvc.perform(delete("/api/activities/batch")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new BatchDeleteRequestPayload(List.of(validId, invalidId)))))
+                                new BatchDeleteRequest(List.of(validId, invalidId)))))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void shouldReturn404_onBatchDeleteActivities_whenAnyActivityDoesNotExist() throws Exception {
+    void shouldReturn200WithFailedEntries_onBatchDeleteActivities_whenAnyActivityDoesNotExist() throws Exception {
         List<String> existingIds = createMultipleActivitiesAndGetIds(2);
         String nonExistentId = "0123456789ABC";
 
         List<String> mixedIds = new ArrayList<>(existingIds);
         mixedIds.add(nonExistentId);
 
-        mockMvc.perform(post("/api/activities/batch-delete")
+        mockMvc.perform(delete("/api/activities/batch")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new BatchDeleteRequestPayload(mixedIds))))
-                .andExpect(status().isNotFound());
+                                new BatchDeleteRequest(mixedIds))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalRequested").value(3))
+                .andExpect(jsonPath("$.totalDeleted").value(2))
+                .andExpect(jsonPath("$.failed").isNotEmpty())
+                .andExpect(jsonPath("$.failed.length()").value(1))
+                .andExpect(jsonPath("$.failed[0].id").value(nonExistentId))
+                .andExpect(jsonPath("$.failed[0].reason").isString());
     }
 
     @Test
-    void shouldNotDeleteAnyActivity_onBatchDeleteActivities_whenAnyActivityDoesNotExist() throws Exception {
+    void shouldDeleteOnlyExistingActivities_onBatchDeleteActivities_whenSomeDoNotExist() throws Exception {
         List<String> existingIds = createMultipleActivitiesAndGetIds(2);
         String nonExistentId = "0123456789ABC";
 
         List<String> mixedIds = new ArrayList<>(existingIds);
         mixedIds.add(nonExistentId);
 
-        mockMvc.perform(post("/api/activities/batch-delete")
+        mockMvc.perform(delete("/api/activities/batch")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new BatchDeleteRequestPayload(mixedIds))))
-                .andExpect(status().isNotFound());
+                                new BatchDeleteRequest(mixedIds))))
+                .andExpect(status().isOk());
 
-        verifyActivitiesNotDeleted(existingIds);
+        verifyActivitiesDeleted(existingIds);
     }
 
     private List<String> createMultipleActivitiesAndGetIds(int count) throws Exception {
@@ -149,20 +159,4 @@ class ActivityControllerBatchDeleteIT {
         }
     }
 
-    private void verifyActivitiesNotDeleted(List<String> activityIds) throws Exception {
-        for (String activityId : activityIds) {
-            mockMvc.perform(get("/api/activities/" + activityId))
-                    .andExpect(status().isOk());
-        }
-    }
-
-    static class BatchDeleteRequestPayload {
-        public List<String> activityIds;
-
-        BatchDeleteRequestPayload(List<String> activityIds) {
-            this.activityIds = activityIds;
-        }
-    }
 }
-
-

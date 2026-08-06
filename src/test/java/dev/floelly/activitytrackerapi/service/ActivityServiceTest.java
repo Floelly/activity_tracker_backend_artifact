@@ -3,6 +3,8 @@ package dev.floelly.activitytrackerapi.service;
 import dev.floelly.activitytrackerapi.dto.request.*;
 import dev.floelly.activitytrackerapi.dto.response.ActivitiesResponse;
 import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
+import dev.floelly.activitytrackerapi.dto.response.BatchDeleteResponse;
+import dev.floelly.activitytrackerapi.dto.response.FailedDelete;
 import dev.floelly.activitytrackerapi.entity.*;
 import dev.floelly.activitytrackerapi.exception.BadRequestException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
@@ -406,6 +408,58 @@ class ActivityServiceTest {
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("Activity")
                 .hasMessageContaining(businessId);
+
+        verify(repository, never()).delete((Activity) any());
+    }
+
+    @Test
+    void batchDeleteActivities_shouldDeleteAllAndReturnSummary_whenAllExist() {
+        Activity activity1 = new Activity();
+        Activity activity2 = new Activity();
+        when(repository.findByBusinessId("id1")).thenReturn(Optional.of(activity1));
+        when(repository.findByBusinessId("id2")).thenReturn(Optional.of(activity2));
+
+        BatchDeleteResponse result = service.batchDeleteActivities(List.of("id1", "id2"));
+
+        assertThat(result.totalRequested()).isEqualTo(2);
+        assertThat(result.totalDeleted()).isEqualTo(2);
+        assertThat(result.failed()).isEmpty();
+
+        verify(repository).delete(activity1);
+        verify(repository).delete(activity2);
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnPartialSuccess_whenSomeNotFound() {
+        Activity activity1 = new Activity();
+        when(repository.findByBusinessId("id1")).thenReturn(Optional.of(activity1));
+        when(repository.findByBusinessId("id2")).thenReturn(Optional.empty());
+
+        BatchDeleteResponse result = service.batchDeleteActivities(List.of("id1", "id2"));
+
+        assertThat(result.totalRequested()).isEqualTo(2);
+        assertThat(result.totalDeleted()).isEqualTo(1);
+        assertThat(result.failed()).hasSize(1);
+        assertThat(result.failed().getFirst()).isInstanceOf(FailedDelete.class);
+        assertThat(result.failed().getFirst().id()).isEqualTo("id2");
+        assertThat(result.failed().getFirst().reason()).contains("Activity").contains("id2");
+
+        verify(repository).delete(activity1);
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnAllFailed_whenNoneExist() {
+        when(repository.findByBusinessId("id1")).thenReturn(Optional.empty());
+        when(repository.findByBusinessId("id2")).thenReturn(Optional.empty());
+        when(repository.findByBusinessId("id3")).thenReturn(Optional.empty());
+
+        BatchDeleteResponse result = service.batchDeleteActivities(List.of("id1", "id2", "id3"));
+
+        assertThat(result.totalRequested()).isEqualTo(3);
+        assertThat(result.totalDeleted()).isEqualTo(0);
+        assertThat(result.failed()).hasSize(3);
+        assertThat(result.failed()).extracting(FailedDelete::id)
+                .containsExactly("id1", "id2", "id3");
 
         verify(repository, never()).delete((Activity) any());
     }
