@@ -1,6 +1,7 @@
 package dev.floelly.activitytrackerapi.controller;
 
 import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
+import dev.floelly.activitytrackerapi.dto.request.BatchDeleteActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.*;
@@ -308,6 +309,88 @@ class ActivityControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(activityService).deleteActivity("0123456789ABC");
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturn200WithSummary_whenAllIdsExist() throws Exception {
+        List<String> activityIds = List.of("0123456789ABC", "0123456789ABD", "0123456789ABE");
+        BatchDeleteResponse response = new BatchDeleteResponse(3, 3, List.of());
+
+        when(activityService.batchDeleteActivities(activityIds)).thenReturn(response);
+
+        mockMvc.perform(delete("/api/activities/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "activityIds": ["0123456789ABC", "0123456789ABD", "0123456789ABE"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.totalRequested").value(3))
+                .andExpect(jsonPath("$.totalDeleted").value(3))
+                .andExpect(jsonPath("$.failed").isArray())
+                .andExpect(jsonPath("$.failed.length()").value(0));
+
+        verify(activityService).batchDeleteActivities(activityIds);
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturn200WithFailedList_whenPartialSuccess() throws Exception {
+        List<String> activityIds = List.of("0123456789ABC", "0123456789ABD");
+        BatchDeleteResponse response = new BatchDeleteResponse(
+                2,
+                1,
+                List.of(new FailedDelete("0123456789ABD", "Activity with id '0123456789ABD' not found."))
+        );
+
+        when(activityService.batchDeleteActivities(activityIds)).thenReturn(response);
+
+        mockMvc.perform(delete("/api/activities/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "activityIds": ["0123456789ABC", "0123456789ABD"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.totalRequested").value(2))
+                .andExpect(jsonPath("$.totalDeleted").value(1))
+                .andExpect(jsonPath("$.failed").isArray())
+                .andExpect(jsonPath("$.failed.length()").value(1))
+                .andExpect(jsonPath("$.failed[0].activityId").value("0123456789ABD"))
+                .andExpect(jsonPath("$.failed[0].reason").value("Activity with id '0123456789ABD' not found."));
+
+        verify(activityService).batchDeleteActivities(activityIds);
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnBadRequest_whenEmptyIdList() throws Exception {
+        mockMvc.perform(delete("/api/activities/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "activityIds": []
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).batchDeleteActivities(any());
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnBadRequest_whenInvalidIdFormat() throws Exception {
+        mockMvc.perform(delete("/api/activities/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "activityIds": ["0123456789ABC", "invalid-id"]
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).batchDeleteActivities(any());
     }
 
     @Test

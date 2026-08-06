@@ -3,6 +3,8 @@ package dev.floelly.activitytrackerapi.service;
 import dev.floelly.activitytrackerapi.dto.request.*;
 import dev.floelly.activitytrackerapi.dto.response.ActivitiesResponse;
 import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
+import dev.floelly.activitytrackerapi.dto.response.BatchDeleteResponse;
+import dev.floelly.activitytrackerapi.dto.response.FailedDelete;
 import dev.floelly.activitytrackerapi.entity.*;
 import dev.floelly.activitytrackerapi.exception.BadRequestException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
@@ -406,6 +408,80 @@ class ActivityServiceTest {
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("Activity")
                 .hasMessageContaining(businessId);
+
+        verify(repository, never()).delete((Activity) any());
+    }
+
+    @Test
+    void batchDeleteActivities_shouldDeleteAllAndReturnSummary_whenAllIdsExist() {
+        String id1 = "act-1";
+        String id2 = "act-2";
+        String id3 = "act-3";
+        Activity activity1 = new Activity();
+        Activity activity2 = new Activity();
+        Activity activity3 = new Activity();
+
+        when(repository.findByBusinessId(id1)).thenReturn(Optional.of(activity1));
+        when(repository.findByBusinessId(id2)).thenReturn(Optional.of(activity2));
+        when(repository.findByBusinessId(id3)).thenReturn(Optional.of(activity3));
+
+        BatchDeleteResponse response = service.batchDeleteActivities(List.of(id1, id2, id3));
+
+        assertThat(response.totalRequested()).isEqualTo(3);
+        assertThat(response.totalDeleted()).isEqualTo(3);
+        assertThat(response.failed()).isEmpty();
+
+        verify(repository).delete(activity1);
+        verify(repository).delete(activity2);
+        verify(repository).delete(activity3);
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnPartialSuccess_whenSomeIdsNotFound() {
+        String existingId = "act-1";
+        String nonExistentId = "act-999";
+        Activity activity = new Activity();
+
+        when(repository.findByBusinessId(existingId)).thenReturn(Optional.of(activity));
+        when(repository.findByBusinessId(nonExistentId)).thenReturn(Optional.empty());
+
+        BatchDeleteResponse response = service.batchDeleteActivities(List.of(existingId, nonExistentId));
+
+        assertThat(response.totalRequested()).isEqualTo(2);
+        assertThat(response.totalDeleted()).isEqualTo(1);
+        assertThat(response.failed()).hasSize(1);
+        assertThat(response.failed().getFirst().activityId()).isEqualTo(nonExistentId);
+        assertThat(response.failed().getFirst().reason()).contains("Activity");
+
+        verify(repository).delete(activity);
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnAllFailed_whenNoIdsExist() {
+        String id1 = "act-1";
+        String id2 = "act-2";
+
+        when(repository.findByBusinessId(id1)).thenReturn(Optional.empty());
+        when(repository.findByBusinessId(id2)).thenReturn(Optional.empty());
+
+        BatchDeleteResponse response = service.batchDeleteActivities(List.of(id1, id2));
+
+        assertThat(response.totalRequested()).isEqualTo(2);
+        assertThat(response.totalDeleted()).isEqualTo(0);
+        assertThat(response.failed()).hasSize(2);
+        assertThat(response.failed().get(0).activityId()).isEqualTo(id1);
+        assertThat(response.failed().get(1).activityId()).isEqualTo(id2);
+
+        verify(repository, never()).delete((Activity) any());
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnEmptyFailed_whenEmptyList() {
+        BatchDeleteResponse response = service.batchDeleteActivities(List.of());
+
+        assertThat(response.totalRequested()).isEqualTo(0);
+        assertThat(response.totalDeleted()).isEqualTo(0);
+        assertThat(response.failed()).isEmpty();
 
         verify(repository, never()).delete((Activity) any());
     }
