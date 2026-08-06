@@ -4,6 +4,7 @@ import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityAttributeRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateCategoryAllocationRequest;
+import dev.floelly.activitytrackerapi.dto.request.DuplicateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.ActivitiesResponse;
 import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
@@ -115,6 +116,65 @@ public class ActivityService {
         // TODO: update tags                // NOSONAR - a future implementation option
         activity.setUpdatedAt(Instant.now());
         return responseMapper.toResponse(activity);
+    }
+
+    @Transactional
+    public ActivityResponse duplicateActivity(String businessId, DuplicateActivityRequest request) {
+        Activity source = findByBusinessId(businessId);
+
+        Activity duplicate = new Activity();
+        duplicate.setBusinessId(tsidFactory.generate().toString());
+        duplicate.setTitle(source.getTitle());
+        duplicate.setNotes(source.getNotes());
+        duplicate.setCreatedAt(Instant.now());
+
+        if (request.startAt() != null && request.endAt() != null) {
+            duplicate.setStartAt(request.startAt());
+            duplicate.setEndAt(request.endAt());
+        } else if (request.startAt() != null) {
+            long durationSeconds = java.time.Duration.between(source.getStartAt(), source.getEndAt()).getSeconds();
+            duplicate.setStartAt(request.startAt());
+            duplicate.setEndAt(request.startAt().plusSeconds(durationSeconds));
+        } else {
+            duplicate.setStartAt(source.getStartAt());
+            duplicate.setEndAt(source.getEndAt());
+        }
+
+        // Deep-copy CategoryAllocations
+        Set<CategoryAllocation> copiedAllocations = new java.util.LinkedHashSet<>();
+        if (source.getCategoryAllocations() != null) {
+            for (CategoryAllocation allocation : source.getCategoryAllocations()) {
+                CategoryAllocation copy = new CategoryAllocation();
+                copy.setPercentage(allocation.getPercentage());
+                copy.setCategory(allocation.getCategory());
+                copy.setSubCategory(allocation.getSubCategory());
+                copy.setActivity(duplicate);
+                copiedAllocations.add(copy);
+            }
+        }
+        duplicate.setCategoryAllocations(copiedAllocations);
+
+        // Deep-copy ActivityAttributes
+        Set<ActivityAttribute> copiedAttributes = new java.util.LinkedHashSet<>();
+        if (source.getAttributes() != null) {
+            for (ActivityAttribute attribute : source.getAttributes()) {
+                ActivityAttribute copy = new ActivityAttribute();
+                copy.setLabel(attribute.getLabel());
+                copy.setValue(attribute.getValue());
+                copy.setShowInOverview(attribute.isShowInOverview());
+                copy.setSortOrder(attribute.getSortOrder());
+                copy.setActivity(duplicate);
+                copiedAttributes.add(copy);
+            }
+        }
+        duplicate.setAttributes(copiedAttributes);
+
+        // Reuse same Tag entities (ManyToMany)
+        duplicate.setTags(source.getTags() != null ? source.getTags() : java.util.Collections.emptySet());
+
+        repository.save(duplicate);
+
+        return responseMapper.toResponse(duplicate);
     }
 
     private Activity findByBusinessId(String businessId) {

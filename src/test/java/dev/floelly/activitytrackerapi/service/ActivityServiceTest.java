@@ -679,6 +679,314 @@ class ActivityServiceTest {
     }
 
     @Test
+    void duplicateActivity_shouldCreateNewActivityWithSameData_whenEmptyRequest() {
+        String businessId = "act-1";
+        Activity source = new Activity();
+        source.setBusinessId(businessId);
+        source.setTitle("Original Title");
+        source.setNotes("Original Notes");
+        source.setStartAt(Instant.parse("2024-01-01T10:00:00Z"));
+        source.setEndAt(Instant.parse("2024-01-01T11:00:00Z"));
+        source.setCreatedAt(Instant.parse("2024-01-01T09:00:00Z"));
+
+        Category category = new Category();
+        category.setBusinessId("cat-1");
+        SubCategory subCategory = new SubCategory();
+        subCategory.setBusinessId("sub-1");
+
+        CategoryAllocation allocation = new CategoryAllocation();
+        allocation.setPercentage(100);
+        allocation.setCategory(category);
+        allocation.setSubCategory(subCategory);
+        allocation.setActivity(source);
+        source.setCategoryAllocations(Set.of(allocation));
+
+        ActivityAttribute attribute = new ActivityAttribute();
+        attribute.setLabel("effort");
+        attribute.setValue("medium");
+        attribute.setShowInOverview(true);
+        attribute.setSortOrder(0);
+        attribute.setActivity(source);
+        source.setAttributes(Set.of(attribute));
+
+        Tag tag = new Tag();
+        tag.setBusinessId("tag-1");
+        tag.setLabel("Health");
+        source.setTags(Set.of(tag));
+
+        DuplicateActivityRequest request = new DuplicateActivityRequest(null, null);
+        ActivityResponse expected = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(source));
+        TSID tsid = mock(TSID.class);
+        when(tsidFactory.generate()).thenReturn(tsid);
+        when(tsid.toString()).thenReturn("new-act-tsid");
+        when(responseMapper.toResponse(any(Activity.class))).thenReturn(expected);
+
+        ActivityResponse result = service.duplicateActivity(businessId, request);
+
+        assertThat(result).isSameAs(expected);
+
+        ArgumentCaptor<Activity> captor = ArgumentCaptor.forClass(Activity.class);
+        verify(repository).save(captor.capture());
+
+        Activity saved = captor.getValue();
+        assertThat(saved.getBusinessId()).isEqualTo("new-act-tsid");
+        assertThat(saved.getTitle()).isEqualTo("Original Title");
+        assertThat(saved.getNotes()).isEqualTo("Original Notes");
+        assertThat(saved.getStartAt()).isEqualTo(Instant.parse("2024-01-01T10:00:00Z"));
+        assertThat(saved.getEndAt()).isEqualTo(Instant.parse("2024-01-01T11:00:00Z"));
+        assertThat(saved.getCreatedAt()).isNotNull();
+        assertThat(saved.getUpdatedAt()).isNull();
+
+        assertThat(saved.getCategoryAllocations()).hasSize(1);
+        CategoryAllocation copiedAllocation = saved.getCategoryAllocations().iterator().next();
+        assertThat(copiedAllocation.getPercentage()).isEqualTo(100);
+        assertThat(copiedAllocation.getCategory().getBusinessId()).isEqualTo("cat-1");
+        assertThat(copiedAllocation.getSubCategory().getBusinessId()).isEqualTo("sub-1");
+        assertThat(copiedAllocation.getActivity()).isSameAs(saved);
+        assertThat(copiedAllocation.getId()).isNull();
+
+        assertThat(saved.getAttributes()).hasSize(1);
+        ActivityAttribute copiedAttribute = saved.getAttributes().iterator().next();
+        assertThat(copiedAttribute.getLabel()).isEqualTo("effort");
+        assertThat(copiedAttribute.getValue()).isEqualTo("medium");
+        assertThat(copiedAttribute.isShowInOverview()).isTrue();
+        assertThat(copiedAttribute.getSortOrder()).isZero();
+        assertThat(copiedAttribute.getActivity()).isSameAs(saved);
+        assertThat(copiedAttribute.getId()).isNull();
+
+        assertThat(saved.getTags()).hasSize(1);
+        assertThat(saved.getTags().iterator().next().getBusinessId()).isEqualTo("tag-1");
+    }
+
+    @Test
+    void duplicateActivity_shouldAdjustTimestamps_whenStartAtProvided() {
+        String businessId = "act-1";
+        Activity source = new Activity();
+        source.setBusinessId(businessId);
+        source.setTitle("Test");
+        source.setStartAt(Instant.parse("2024-01-01T10:00:00Z"));
+        source.setEndAt(Instant.parse("2024-01-01T11:30:00Z")); // 90 minutes duration
+        source.setCategoryAllocations(new HashSet<>());
+        source.setAttributes(new HashSet<>());
+        source.setTags(new HashSet<>());
+
+        DuplicateActivityRequest request = new DuplicateActivityRequest(
+                Instant.parse("2024-02-01T14:00:00Z"), null);
+        ActivityResponse expected = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(source));
+        TSID tsid = mock(TSID.class);
+        when(tsidFactory.generate()).thenReturn(tsid);
+        when(tsid.toString()).thenReturn("new-act-tsid");
+        when(responseMapper.toResponse(any(Activity.class))).thenReturn(expected);
+
+        ActivityResponse result = service.duplicateActivity(businessId, request);
+
+        assertThat(result).isSameAs(expected);
+
+        ArgumentCaptor<Activity> captor = ArgumentCaptor.forClass(Activity.class);
+        verify(repository).save(captor.capture());
+
+        Activity saved = captor.getValue();
+        assertThat(saved.getStartAt()).isEqualTo(Instant.parse("2024-02-01T14:00:00Z"));
+        assertThat(saved.getEndAt()).isEqualTo(Instant.parse("2024-02-01T15:30:00Z"));
+    }
+
+    @Test
+    void duplicateActivity_shouldUseExactTimestamps_whenBothProvided() {
+        String businessId = "act-1";
+        Activity source = new Activity();
+        source.setBusinessId(businessId);
+        source.setTitle("Test");
+        source.setStartAt(Instant.parse("2024-01-01T10:00:00Z"));
+        source.setEndAt(Instant.parse("2024-01-01T11:00:00Z"));
+        source.setCategoryAllocations(new HashSet<>());
+        source.setAttributes(new HashSet<>());
+        source.setTags(new HashSet<>());
+
+        DuplicateActivityRequest request = new DuplicateActivityRequest(
+                Instant.parse("2024-02-01T14:00:00Z"),
+                Instant.parse("2024-02-01T16:00:00Z"));
+        ActivityResponse expected = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(source));
+        TSID tsid = mock(TSID.class);
+        when(tsidFactory.generate()).thenReturn(tsid);
+        when(tsid.toString()).thenReturn("new-act-tsid");
+        when(responseMapper.toResponse(any(Activity.class))).thenReturn(expected);
+
+        ActivityResponse result = service.duplicateActivity(businessId, request);
+
+        assertThat(result).isSameAs(expected);
+
+        ArgumentCaptor<Activity> captor = ArgumentCaptor.forClass(Activity.class);
+        verify(repository).save(captor.capture());
+
+        Activity saved = captor.getValue();
+        assertThat(saved.getStartAt()).isEqualTo(Instant.parse("2024-02-01T14:00:00Z"));
+        assertThat(saved.getEndAt()).isEqualTo(Instant.parse("2024-02-01T16:00:00Z"));
+    }
+
+    @Test
+    void duplicateActivity_shouldThrow_whenSourceNotFound() {
+        String businessId = "missing-id";
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.empty());
+
+        DuplicateActivityRequest request = new DuplicateActivityRequest(null, null);
+
+        assertThatThrownBy(() -> service.duplicateActivity(businessId, request))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("Activity")
+                .hasMessageContaining(businessId);
+
+        verify(repository, never()).save(any(Activity.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldNotModifyOriginalActivity() {
+        String businessId = "act-1";
+        Activity source = new Activity();
+        source.setBusinessId(businessId);
+        source.setTitle("Original");
+        source.setNotes("Original Notes");
+        source.setStartAt(Instant.parse("2024-01-01T10:00:00Z"));
+        source.setEndAt(Instant.parse("2024-01-01T11:00:00Z"));
+        source.setCategoryAllocations(new HashSet<>());
+        source.setAttributes(new HashSet<>());
+        source.setTags(new HashSet<>());
+
+        DuplicateActivityRequest request = new DuplicateActivityRequest(
+                Instant.parse("2024-02-01T14:00:00Z"),
+                Instant.parse("2024-02-01T16:00:00Z"));
+        ActivityResponse expected = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(source));
+        TSID tsid = mock(TSID.class);
+        when(tsidFactory.generate()).thenReturn(tsid);
+        when(tsid.toString()).thenReturn("new-act-tsid");
+        when(responseMapper.toResponse(any(Activity.class))).thenReturn(expected);
+
+        service.duplicateActivity(businessId, request);
+
+        // Original should be unchanged
+        assertThat(source.getBusinessId()).isEqualTo(businessId);
+        assertThat(source.getTitle()).isEqualTo("Original");
+        assertThat(source.getStartAt()).isEqualTo(Instant.parse("2024-01-01T10:00:00Z"));
+        assertThat(source.getEndAt()).isEqualTo(Instant.parse("2024-01-01T11:00:00Z"));
+    }
+
+    @Test
+    void duplicateActivity_shouldCopyAllChildEntities_withCorrectReferences() {
+        String businessId = "act-1";
+        Activity source = new Activity();
+        source.setBusinessId(businessId);
+        source.setTitle("Child Copy Source");
+        source.setNotes("Some note");
+        source.setStartAt(Instant.parse("2024-01-01T08:00:00Z"));
+        source.setEndAt(Instant.parse("2024-01-01T09:00:00Z"));
+
+        Category category = new Category();
+        category.setBusinessId("cat-1");
+        SubCategory subCategory = new SubCategory();
+        subCategory.setBusinessId("sub-1");
+
+        CategoryAllocation allocation = new CategoryAllocation();
+        allocation.setPercentage(100);
+        allocation.setCategory(category);
+        allocation.setSubCategory(subCategory);
+        allocation.setActivity(source);
+        source.setCategoryAllocations(Set.of(allocation));
+
+        ActivityAttribute attribute = new ActivityAttribute();
+        attribute.setLabel("location");
+        attribute.setValue("gym");
+        attribute.setShowInOverview(true);
+        attribute.setSortOrder(1);
+        attribute.setActivity(source);
+        source.setAttributes(Set.of(attribute));
+
+        Tag tag = new Tag();
+        tag.setBusinessId("tag-1");
+        tag.setLabel("fitness");
+        source.setTags(Set.of(tag));
+
+        DuplicateActivityRequest request = new DuplicateActivityRequest(null, null);
+        ActivityResponse expected = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(source));
+        TSID tsid = mock(TSID.class);
+        when(tsidFactory.generate()).thenReturn(tsid);
+        when(tsid.toString()).thenReturn("new-act-tsid");
+        when(responseMapper.toResponse(any(Activity.class))).thenReturn(expected);
+
+        service.duplicateActivity(businessId, request);
+
+        ArgumentCaptor<Activity> captor = ArgumentCaptor.forClass(Activity.class);
+        verify(repository).save(captor.capture());
+
+        Activity saved = captor.getValue();
+
+        // Verify CategoryAllocations
+        assertThat(saved.getCategoryAllocations()).hasSize(1);
+        CategoryAllocation savedAllocation = saved.getCategoryAllocations().iterator().next();
+        assertThat(savedAllocation.getPercentage()).isEqualTo(100);
+        assertThat(savedAllocation.getCategory().getBusinessId()).isEqualTo("cat-1");
+        assertThat(savedAllocation.getSubCategory().getBusinessId()).isEqualTo("sub-1");
+        assertThat(savedAllocation.getActivity()).isSameAs(saved);
+        assertThat(savedAllocation.getId()).isNull();
+
+        // Verify ActivityAttributes
+        assertThat(saved.getAttributes()).hasSize(1);
+        ActivityAttribute savedAttribute = saved.getAttributes().iterator().next();
+        assertThat(savedAttribute.getLabel()).isEqualTo("location");
+        assertThat(savedAttribute.getValue()).isEqualTo("gym");
+        assertThat(savedAttribute.isShowInOverview()).isTrue();
+        assertThat(savedAttribute.getSortOrder()).isEqualTo(1);
+        assertThat(savedAttribute.getActivity()).isSameAs(saved);
+        assertThat(savedAttribute.getId()).isNull();
+
+        // Verify Tags (same entity references)
+        assertThat(saved.getTags()).hasSize(1);
+        assertThat(saved.getTags().iterator().next().getBusinessId()).isEqualTo("tag-1");
+    }
+
+    @Test
+    void duplicateActivity_shouldHandleNullChildCollections() {
+        String businessId = "act-1";
+        Activity source = new Activity();
+        source.setBusinessId(businessId);
+        source.setTitle("Test");
+        source.setNotes("Notes");
+        source.setStartAt(Instant.parse("2024-01-01T10:00:00Z"));
+        source.setEndAt(Instant.parse("2024-01-01T11:00:00Z"));
+        source.setCategoryAllocations(null);
+        source.setAttributes(null);
+        source.setTags(null);
+
+        DuplicateActivityRequest request = new DuplicateActivityRequest(null, null);
+        ActivityResponse expected = mock(ActivityResponse.class);
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(source));
+        TSID tsid = mock(TSID.class);
+        when(tsidFactory.generate()).thenReturn(tsid);
+        when(tsid.toString()).thenReturn("new-act-tsid");
+        when(responseMapper.toResponse(any(Activity.class))).thenReturn(expected);
+
+        service.duplicateActivity(businessId, request);
+
+        ArgumentCaptor<Activity> captor = ArgumentCaptor.forClass(Activity.class);
+        verify(repository).save(captor.capture());
+
+        Activity saved = captor.getValue();
+        assertThat(saved.getCategoryAllocations()).isEmpty();
+        assertThat(saved.getAttributes()).isEmpty();
+        assertThat(saved.getTags()).isEmpty();
+    }
+
+    @Test
     void updateActivity_shouldThrowWhenSubCategoryDoesNotBelongToCategory() {
         String businessId = "act-1";
 

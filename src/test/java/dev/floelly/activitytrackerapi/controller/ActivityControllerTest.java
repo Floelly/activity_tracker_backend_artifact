@@ -2,6 +2,7 @@ package dev.floelly.activitytrackerapi.controller;
 
 import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
+import dev.floelly.activitytrackerapi.dto.request.DuplicateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.*;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
@@ -467,5 +468,94 @@ class ActivityControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(activityService, never()).updateActivity(anyString(), any(UpdateActivityRequest.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnCreated_whenValidRequest() throws Exception {
+        String activityId = "0123456789ABC";
+        ActivityResponse response = new ActivityResponse(
+                "new-id-1234567",
+                "Original Title",
+                "Original Notes",
+                Instant.parse("2024-01-01T10:00:00Z"),
+                Instant.parse("2024-01-01T11:00:00Z"),
+                3600,
+                List.of(),
+                List.of(),
+                List.of(),
+                Instant.now(),
+                null
+        );
+
+        when(activityService.duplicateActivity(eq(activityId), any(DuplicateActivityRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/activities/" + activityId + "/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value("new-id-1234567"))
+                .andExpect(jsonPath("$.title").value("Original Title"));
+
+        verify(activityService).duplicateActivity(eq(activityId), any(DuplicateActivityRequest.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnBadRequest_whenActivityIdIsInvalid() throws Exception {
+        mockMvc.perform(post("/api/activities/invalid-id/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).duplicateActivity(anyString(), any(DuplicateActivityRequest.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnNotFound_whenServiceThrowsNotFoundException() throws Exception {
+        String activityId = "0123456789ABC";
+
+        when(activityService.duplicateActivity(eq(activityId), any(DuplicateActivityRequest.class)))
+                .thenThrow(new NotFoundException("Activity with id '0123456789ABC' not found."));
+
+        mockMvc.perform(post("/api/activities/" + activityId + "/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isNotFound());
+
+        verify(activityService).duplicateActivity(eq(activityId), any(DuplicateActivityRequest.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnBadRequest_whenEndAtProvidedWithoutStartAt() throws Exception {
+        String activityId = "0123456789ABC";
+
+        mockMvc.perform(post("/api/activities/" + activityId + "/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "endAt": "2024-01-01T12:00:00Z"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).duplicateActivity(anyString(), any(DuplicateActivityRequest.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnBadRequest_whenEndAtBeforeStartAt() throws Exception {
+        String activityId = "0123456789ABC";
+
+        mockMvc.perform(post("/api/activities/" + activityId + "/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "startAt": "2024-01-01T10:00:00Z",
+                                    "endAt": "2024-01-01T09:00:00Z"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).duplicateActivity(anyString(), any(DuplicateActivityRequest.class));
     }
 }
