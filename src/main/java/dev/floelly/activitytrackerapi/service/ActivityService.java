@@ -4,6 +4,7 @@ import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityAttributeRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateCategoryAllocationRequest;
+import dev.floelly.activitytrackerapi.dto.request.DuplicateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.ActivitiesResponse;
 import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
@@ -28,7 +29,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -115,6 +118,69 @@ public class ActivityService {
         // TODO: update tags                // NOSONAR - a future implementation option
         activity.setUpdatedAt(Instant.now());
         return responseMapper.toResponse(activity);
+    }
+
+    @Transactional
+    public ActivityResponse duplicateActivity(String businessId, DuplicateActivityRequest request) {
+        Activity source = findByBusinessId(businessId);
+
+        if (request.endAt() != null && request.startAt() == null) {
+            throw new BadRequestException("endAt cannot be provided without startAt");
+        }
+
+        Activity clone = new Activity();
+        clone.setBusinessId(tsidFactory.generate().toString());
+        clone.setTitle(source.getTitle());
+        clone.setNotes(source.getNotes());
+        clone.setCreatedAt(Instant.now());
+
+        if (request.startAt() != null) {
+            clone.setStartAt(request.startAt());
+            if (request.endAt() != null) {
+                clone.setEndAt(request.endAt());
+            } else {
+                long durationSeconds = Duration.between(source.getStartAt(), source.getEndAt()).getSeconds();
+                clone.setEndAt(request.startAt().plusSeconds(durationSeconds));
+            }
+        } else {
+            clone.setStartAt(source.getStartAt());
+            clone.setEndAt(source.getEndAt());
+        }
+
+        // Deep copy CategoryAllocations
+        Set<CategoryAllocation> clonedAllocations = source.getCategoryAllocations().stream()
+                .map(allocation -> {
+                    CategoryAllocation ca = new CategoryAllocation();
+                    ca.setPercentage(allocation.getPercentage());
+                    ca.setCategory(allocation.getCategory());
+                    ca.setSubCategory(allocation.getSubCategory());
+                    ca.setActivity(clone);
+                    return ca;
+                })
+                .collect(Collectors.toSet());
+        clone.setCategoryAllocations(clonedAllocations);
+
+        // Deep copy ActivityAttributes
+        Set<ActivityAttribute> clonedAttributes = source.getAttributes().stream()
+                .map(attr -> {
+                    ActivityAttribute aa = new ActivityAttribute();
+                    aa.setLabel(attr.getLabel());
+                    aa.setValue(attr.getValue());
+                    aa.setShowInOverview(attr.isShowInOverview());
+                    aa.setSortOrder(attr.getSortOrder());
+                    aa.setActivity(clone);
+                    return aa;
+                })
+                .collect(Collectors.toSet());
+        clone.setAttributes(clonedAttributes);
+
+        // Copy Tag references (same Tag entities, no new tags created)
+        Set<Tag> clonedTags = new HashSet<>(source.getTags());
+        clone.setTags(clonedTags);
+
+        repository.save(clone);
+
+        return responseMapper.toResponse(clone);
     }
 
     private Activity findByBusinessId(String businessId) {

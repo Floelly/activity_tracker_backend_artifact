@@ -2,6 +2,7 @@ package dev.floelly.activitytrackerapi.controller;
 
 import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
+import dev.floelly.activitytrackerapi.dto.request.DuplicateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.*;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
@@ -467,5 +468,60 @@ class ActivityControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(activityService, never()).updateActivity(anyString(), any(UpdateActivityRequest.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnCreatedAndCallService() throws Exception {
+        String businessId = "0123456789ABC";
+        ActivityResponse response = new ActivityResponse(
+                "new-id",
+                "Template Activity",
+                "Template notes",
+                Instant.parse("2024-01-01T10:00:00Z"),
+                Instant.parse("2024-01-01T11:00:00Z"),
+                3600,
+                List.of(),
+                List.of(),
+                List.of(),
+                Instant.now(),
+                null
+        );
+
+        when(activityService.duplicateActivity(eq(businessId), any(DuplicateActivityRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/activities/" + businessId + "/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value("new-id"))
+                .andExpect(jsonPath("$.title").value("Template Activity"));
+
+        verify(activityService).duplicateActivity(eq(businessId), any(DuplicateActivityRequest.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnBadRequest_whenActivityIdIsInvalid() throws Exception {
+        mockMvc.perform(post("/api/activities/invalid-id/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).duplicateActivity(anyString(), any(DuplicateActivityRequest.class));
+    }
+
+    @Test
+    void duplicateActivity_shouldReturnNotFound_whenServiceThrowsNotFoundException() throws Exception {
+        String businessId = "0123456789ABC";
+        when(activityService.duplicateActivity(eq(businessId), any(DuplicateActivityRequest.class)))
+                .thenThrow(new NotFoundException("Activity not found"));
+
+        mockMvc.perform(post("/api/activities/" + businessId + "/duplicate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isNotFound());
+
+        verify(activityService).duplicateActivity(eq(businessId), any(DuplicateActivityRequest.class));
     }
 }
