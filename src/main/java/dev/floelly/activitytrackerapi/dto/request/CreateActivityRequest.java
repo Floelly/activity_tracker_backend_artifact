@@ -11,6 +11,7 @@ import java.util.List;
 
 @ValidTimeRange
 public record CreateActivityRequest(
+        @NotNull
         @Size(max = 120)
         String title,
 

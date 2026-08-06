@@ -1,0 +1,1 @@
+cd /workspace && mvn test -Dtest="CreateActivityRequestValidationTest,UpdateActivityRequestValidationTest" -DfailIfNoTests=false 2>&1
