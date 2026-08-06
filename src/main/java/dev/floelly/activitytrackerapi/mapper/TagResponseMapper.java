@@ -23,10 +23,23 @@ public interface TagResponseMapper {
                 .toList();
     }
 
+    default List<TagResponse> toResponseListPreserveOrder(List<Tag> tags) {
+        return tags.stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     default TagsResponse toTagsResponse(Iterable<Tag> tags) {
         if (tags == null) {
             return null;
         }
         return new TagsResponse(toResponseList(tags));
+    }
+
+    default TagsResponse toTagsResponsePreserveOrder(List<Tag> tags) {
+        if (tags == null) {
+            return null;
+        }
+        return new TagsResponse(toResponseListPreserveOrder(tags));
     }
 }

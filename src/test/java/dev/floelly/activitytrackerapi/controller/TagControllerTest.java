@@ -16,6 +16,9 @@ import java.util.List;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -114,7 +117,7 @@ class TagControllerTest {
                 new TagResponse("tag-2", "Work", "#3b82f6", "Work related tag", 1)
         ));
 
-        when(tagService.findAllTags()).thenReturn(response);
+        when(tagService.searchTags(nullable(String.class), eq(10))).thenReturn(response);
 
         mockMvc.perform(get("/api/tags"))
                 .andExpect(status().isOk())
@@ -127,14 +130,14 @@ class TagControllerTest {
                 .andExpect(jsonPath("$.tags[1].description").value("Work related tag"))
                 .andExpect(jsonPath("$.tags[1].sortOrder").value(1));
 
-        verify(tagService).findAllTags();
+        verify(tagService).searchTags(null, 10);
     }
 
     @Test
     void getAllTags_shouldReturnOk_OnEmptyList() throws Exception {
         TagsResponse response = new TagsResponse(List.of());
 
-        when(tagService.findAllTags()).thenReturn(response);
+        when(tagService.searchTags(nullable(String.class), eq(10))).thenReturn(response);
 
         mockMvc.perform(get("/api/tags"))
                 .andExpect(status().isOk())
@@ -142,6 +145,49 @@ class TagControllerTest {
                 .andExpect(jsonPath("$.tags").isArray())
                 .andExpect(jsonPath("$.tags.length()").value(0));
 
-        verify(tagService).findAllTags();
+        verify(tagService).searchTags(null, 10);
+    }
+
+    @Test
+    void getAllTags_shouldPassQueryAndLimitToService() throws Exception {
+        TagsResponse response = new TagsResponse(List.of(
+                new TagResponse("tag-1", "Health", "#22c55e", "Health related tag", 0)
+        ));
+
+        when(tagService.searchTags("proj", 5)).thenReturn(response);
+
+        mockMvc.perform(get("/api/tags")
+                        .param("query", "proj")
+                        .param("limit", "5"))
+                .andExpect(status().isOk());
+
+        verify(tagService).searchTags("proj", 5);
+    }
+
+    @Test
+    void getAllTags_shouldReturnBadRequest_whenQueryExceedsMaxLength() throws Exception {
+        mockMvc.perform(get("/api/tags")
+                        .param("query", "x".repeat(51)))
+                .andExpect(status().isBadRequest());
+
+        verify(tagService, never()).searchTags(any(), anyInt());
+    }
+
+    @Test
+    void getAllTags_shouldReturnBadRequest_whenLimitBelowMinimum() throws Exception {
+        mockMvc.perform(get("/api/tags")
+                        .param("limit", "0"))
+                .andExpect(status().isBadRequest());
+
+        verify(tagService, never()).searchTags(any(), anyInt());
+    }
+
+    @Test
+    void getAllTags_shouldReturnBadRequest_whenLimitAboveMaximum() throws Exception {
+        mockMvc.perform(get("/api/tags")
+                        .param("limit", "101"))
+                .andExpect(status().isBadRequest());
+
+        verify(tagService, never()).searchTags(any(), anyInt());
     }
 }

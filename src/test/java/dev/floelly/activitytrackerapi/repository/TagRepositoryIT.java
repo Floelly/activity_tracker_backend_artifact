@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 import java.util.Set;
@@ -96,6 +97,51 @@ class TagRepositoryIT extends MySQLContainerInitializer {
         tagRepository.save(tag);
 
         Set<Tag> result = tagRepository.findByBusinessIdIn(List.of());
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findAll_withSortByLabelAsc_shouldReturnAllTagsSorted() {
+        Tag tagA = new Tag(null, "ID1", "Beta", "#111", "desc", 1);
+        Tag tagB = new Tag(null, "ID2", "Alpha", "#222", "desc", 2);
+        Tag tagC = new Tag(null, "ID3", "Gamma", "#333", "desc", 3);
+
+        tagRepository.saveAll(List.of(tagA, tagB, tagC));
+
+        Sort sort = Sort.by(Sort.Direction.ASC, "label");
+        List<Tag> result = tagRepository.findAll(sort);
+
+        assertThat(result)
+                .extracting(Tag::getLabel)
+                .containsExactly("Alpha", "Beta", "Gamma");
+    }
+
+    @Test
+    void findAll_withSpecification_shouldFilterByLabelCaseInsensitive() {
+        Tag tag1 = new Tag(null, "ID1", "Projekt", "#111", "desc", 1);
+        Tag tag2 = new Tag(null, "ID2", "Projekt-A", "#222", "desc", 2);
+        Tag tag3 = new Tag(null, "ID3", "Projektmanagement", "#333", "desc", 3);
+        Tag tag4 = new Tag(null, "ID4", "MyProject", "#444", "desc", 4);
+        Tag tag5 = new Tag(null, "ID5", "Other", "#555", "desc", 5);
+
+        tagRepository.saveAll(List.of(tag1, tag2, tag3, tag4, tag5));
+
+        Sort sort = Sort.by(Sort.Direction.ASC, "label");
+        List<Tag> result = tagRepository.findAll(TagSpecifications.labelContains("proj"), sort);
+
+        assertThat(result)
+                .extracting(Tag::getLabel)
+                .containsExactly("MyProject", "Projekt", "Projekt-A", "Projektmanagement");
+    }
+
+    @Test
+    void findAll_withSpecification_shouldReturnEmpty_whenNoMatch() {
+        Tag tag = new Tag(null, "ID1", "Unique", "#111", "desc", 1);
+        tagRepository.save(tag);
+
+        Sort sort = Sort.by(Sort.Direction.ASC, "label");
+        List<Tag> result = tagRepository.findAll(TagSpecifications.labelContains("zzz_nonexistent"), sort);
 
         assertThat(result).isEmpty();
     }
