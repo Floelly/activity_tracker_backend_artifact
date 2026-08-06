@@ -1,13 +1,16 @@
 package dev.floelly.activitytrackerapi.controller;
 
 import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
+import dev.floelly.activitytrackerapi.dto.request.BatchDeleteActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.ActivitiesResponse;
 import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
+import dev.floelly.activitytrackerapi.dto.response.BatchDeleteResponse;
 import dev.floelly.activitytrackerapi.service.ActivityService;
 import dev.floelly.activitytrackerapi.validation.ValidTSID;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,6 +55,13 @@ public class ActivityController {
     public ResponseEntity<Void> deleteActivity(@PathVariable @ValidTSID String activityId) {
         activityService.deleteActivity(activityId);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/batch")
+    public ResponseEntity<BatchDeleteResponse> batchDeleteActivities(
+            @RequestBody @Valid @NotNull BatchDeleteActivityRequest request) {
+        BatchDeleteResponse response = activityService.batchDeleteActivities(request.activityIds());
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @PutMapping("/{activityId}")

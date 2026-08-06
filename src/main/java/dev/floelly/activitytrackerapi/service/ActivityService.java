@@ -7,6 +7,8 @@ import dev.floelly.activitytrackerapi.dto.request.CreateCategoryAllocationReques
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.ActivitiesResponse;
 import dev.floelly.activitytrackerapi.dto.response.ActivityResponse;
+import dev.floelly.activitytrackerapi.dto.response.BatchDeleteResponse;
+import dev.floelly.activitytrackerapi.dto.response.FailedDelete;
 import dev.floelly.activitytrackerapi.entity.Activity;
 import dev.floelly.activitytrackerapi.entity.ActivityAttribute;
 import dev.floelly.activitytrackerapi.entity.Category;
@@ -96,6 +98,25 @@ public class ActivityService {
     public void deleteActivity(String businessId) {
         Activity activity = findByBusinessId(businessId);
         repository.delete(activity);
+    }
+
+    @Transactional
+    public BatchDeleteResponse batchDeleteActivities(List<String> activityIds) {
+        int totalRequested = activityIds.size();
+        int totalDeleted = 0;
+        List<FailedDelete> failed = new java.util.ArrayList<>();
+
+        for (String id : activityIds) {
+            try {
+                Activity activity = findByBusinessId(id);
+                repository.delete(activity);
+                totalDeleted++;
+            } catch (NotFoundException e) {
+                failed.add(new FailedDelete(id, e.getMessage()));
+            }
+        }
+
+        return new BatchDeleteResponse(totalRequested, totalDeleted, failed);
     }
 
     @Transactional

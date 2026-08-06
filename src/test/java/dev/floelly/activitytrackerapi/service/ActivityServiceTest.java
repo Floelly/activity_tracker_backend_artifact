@@ -411,6 +411,77 @@ class ActivityServiceTest {
     }
 
     @Test
+    void batchDeleteActivities_shouldDeleteAllAndReturnFullSuccess_whenAllIdsExist() {
+        String id1 = "act-1";
+        String id2 = "act-2";
+        Activity activity1 = new Activity();
+        Activity activity2 = new Activity();
+
+        when(repository.findByBusinessId(id1)).thenReturn(Optional.of(activity1));
+        when(repository.findByBusinessId(id2)).thenReturn(Optional.of(activity2));
+
+        var response = service.batchDeleteActivities(List.of(id1, id2));
+
+        assertThat(response.totalRequested()).isEqualTo(2);
+        assertThat(response.totalDeleted()).isEqualTo(2);
+        assertThat(response.failed()).isEmpty();
+
+        verify(repository).delete(activity1);
+        verify(repository).delete(activity2);
+    }
+
+    @Test
+    void batchDeleteActivities_shouldDeleteExistingAndReportFailed_whenSomeIdsDoNotExist() {
+        String existingId = "act-1";
+        String nonExistentId = "missing-1";
+        Activity activity = new Activity();
+
+        when(repository.findByBusinessId(existingId)).thenReturn(Optional.of(activity));
+        when(repository.findByBusinessId(nonExistentId)).thenReturn(Optional.empty());
+
+        var response = service.batchDeleteActivities(List.of(existingId, nonExistentId));
+
+        assertThat(response.totalRequested()).isEqualTo(2);
+        assertThat(response.totalDeleted()).isEqualTo(1);
+        assertThat(response.failed()).hasSize(1);
+        assertThat(response.failed().getFirst().id()).isEqualTo(nonExistentId);
+        assertThat(response.failed().getFirst().reason()).contains("Activity");
+
+        verify(repository).delete(activity);
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReportAllFailed_whenNoIdsExist() {
+        String id1 = "missing-1";
+        String id2 = "missing-2";
+
+        when(repository.findByBusinessId(id1)).thenReturn(Optional.empty());
+        when(repository.findByBusinessId(id2)).thenReturn(Optional.empty());
+
+        var response = service.batchDeleteActivities(List.of(id1, id2));
+
+        assertThat(response.totalRequested()).isEqualTo(2);
+        assertThat(response.totalDeleted()).isEqualTo(0);
+        assertThat(response.failed()).hasSize(2);
+        assertThat(response.failed().get(0).id()).isEqualTo(id1);
+        assertThat(response.failed().get(1).id()).isEqualTo(id2);
+
+        verify(repository, never()).delete((Activity) any());
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnEmptyResult_whenEmptyListProvided() {
+        var response = service.batchDeleteActivities(List.of());
+
+        assertThat(response.totalRequested()).isEqualTo(0);
+        assertThat(response.totalDeleted()).isEqualTo(0);
+        assertThat(response.failed()).isEmpty();
+
+        verify(repository, never()).findByBusinessId(any());
+        verify(repository, never()).delete((Activity) any());
+    }
+
+    @Test
     void updateActivity_shouldThrowWhenRequestIdDoesNotMatchPathId() {
         String businessId = "act-1";
         UpdateActivityRequest request = new UpdateActivityRequest(

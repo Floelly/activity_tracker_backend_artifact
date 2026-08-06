@@ -1,6 +1,7 @@
 package dev.floelly.activitytrackerapi.controller;
 
 import dev.floelly.activitytrackerapi.dto.request.ActivityFilterDTO;
+import dev.floelly.activitytrackerapi.dto.request.BatchDeleteActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.UpdateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.response.*;
@@ -289,6 +290,84 @@ class ActivityControllerTest {
                 .andExpect(content().string(""));
 
         verify(activityService).deleteActivity("0123456789ABC");
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnOkWithResponse_whenAllIdsExist() throws Exception {
+        BatchDeleteResponse response = new BatchDeleteResponse(2, 2, List.of());
+        when(activityService.batchDeleteActivities(List.of("0123456789ABC", "0123456789ABD")))
+                .thenReturn(response);
+
+        mockMvc.perform(delete("/api/activities/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "activityIds": ["0123456789ABC", "0123456789ABD"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalRequested").value(2))
+                .andExpect(jsonPath("$.totalDeleted").value(2))
+                .andExpect(jsonPath("$.failed").isArray())
+                .andExpect(jsonPath("$.failed.length()").value(0));
+
+        verify(activityService).batchDeleteActivities(List.of("0123456789ABC", "0123456789ABD"));
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnOkWithFailedList_whenSomeIdsDoNotExist() throws Exception {
+        BatchDeleteResponse response = new BatchDeleteResponse(
+                2,
+                1,
+                List.of(new FailedDelete("0123456789ABD", "Activity with id '0123456789ABD' not found."))
+        );
+        when(activityService.batchDeleteActivities(List.of("0123456789ABC", "0123456789ABD")))
+                .thenReturn(response);
+
+        mockMvc.perform(delete("/api/activities/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "activityIds": ["0123456789ABC", "0123456789ABD"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalRequested").value(2))
+                .andExpect(jsonPath("$.totalDeleted").value(1))
+                .andExpect(jsonPath("$.failed").isArray())
+                .andExpect(jsonPath("$.failed.length()").value(1))
+                .andExpect(jsonPath("$.failed[0].id").value("0123456789ABD"))
+                .andExpect(jsonPath("$.failed[0].reason").value("Activity with id '0123456789ABD' not found."));
+
+        verify(activityService).batchDeleteActivities(List.of("0123456789ABC", "0123456789ABD"));
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnBadRequest_whenActivityIdsEmpty() throws Exception {
+        mockMvc.perform(delete("/api/activities/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "activityIds": []
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).batchDeleteActivities(any());
+    }
+
+    @Test
+    void batchDeleteActivities_shouldReturnBadRequest_whenAnyIdHasInvalidFormat() throws Exception {
+        mockMvc.perform(delete("/api/activities/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "activityIds": ["0123456789ABC", "invalid-id"]
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).batchDeleteActivities(any());
     }
 
     @Test
