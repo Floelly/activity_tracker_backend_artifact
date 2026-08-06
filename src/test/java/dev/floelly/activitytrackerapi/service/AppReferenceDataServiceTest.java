@@ -52,14 +52,14 @@ class AppReferenceDataServiceTest {
         );
         List<CategoryResponse> mappedResponses = List.of(categoryResponse1, categoryResponse2);
 
-        when(categoryRepository.findAll()).thenReturn(categories);
+        when(categoryRepository.findAllByDeletedAtIsNull()).thenReturn(categories);
         when(categoryResponseMapper.toCategoryResponseList(categories)).thenReturn(mappedResponses);
 
         AppReferenceDataResponse result = service.getAppReferenceData();
 
         assertThat(result.categories()).isSameAs(mappedResponses);
 
-        verify(categoryRepository).findAll();
+        verify(categoryRepository).findAllByDeletedAtIsNull();
         verify(categoryResponseMapper).toCategoryResponseList(categories);
         verifyNoMoreInteractions(categoryRepository, categoryResponseMapper);
     }

@@ -26,6 +26,7 @@ class CategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "default",
                 "some description",
+                null,
                 List.of()
         );
     }
@@ -39,6 +40,7 @@ class CategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "shoe",
                 "some description",
+                null,
                 List.of()
         );
 

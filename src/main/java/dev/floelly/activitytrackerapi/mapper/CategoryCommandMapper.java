@@ -18,6 +18,7 @@ public interface CategoryCommandMapper {
     @Mapping(target = "colorCode", source = "color")
     @Mapping(target = "iconName", source = "icon")
     @Mapping(target = "description", qualifiedBy = NormalizedParagraphText.class)
+    @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "subCategories", ignore = true)
     Category toEntity(CreateCategoryRequest request);
 
@@ -27,6 +28,7 @@ public interface CategoryCommandMapper {
     @Mapping(target = "colorCode", source = "color")
     @Mapping(target = "iconName", source = "icon")
     @Mapping(target = "description", qualifiedBy = NormalizedParagraphText.class)
+    @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "subCategories", ignore = true)
     void updateEntity(UpdateCategoryRequest categoryRequest, @MappingTarget Category category);
 }

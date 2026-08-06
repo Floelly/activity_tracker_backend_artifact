@@ -7,7 +7,6 @@ import dev.floelly.activitytrackerapi.dto.response.CategoriesResponse;
 import dev.floelly.activitytrackerapi.dto.response.CategoryResponse;
 import dev.floelly.activitytrackerapi.dto.response.SubCategoriesResponse;
 import dev.floelly.activitytrackerapi.dto.response.SubCategoryResponse;
-import dev.floelly.activitytrackerapi.exception.EntityDeletionConflictException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
 import dev.floelly.activitytrackerapi.service.CategoryService;
 import org.junit.jupiter.api.Test;
@@ -239,18 +238,6 @@ class CategoryControllerTest {
 
         mockMvc.perform(delete("/api/categories/0123456789ABC"))
                 .andExpect(status().isNotFound());
-
-        verify(categoryService).deleteCategory("0123456789ABC");
-    }
-
-    @Test
-    void deleteCategory_shouldReturnConflict_whenServiceThrowsEntityDeletionConflictException() throws Exception {
-        doThrow(new EntityDeletionConflictException(
-                "Category 'Sport' (id: 0123456789ABC) has activities assigned to it."
-        )).when(categoryService).deleteCategory("0123456789ABC");
-
-        mockMvc.perform(delete("/api/categories/0123456789ABC"))
-                .andExpect(status().isConflict());
 
         verify(categoryService).deleteCategory("0123456789ABC");
     }

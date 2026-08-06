@@ -10,4 +10,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByBusinessId(String businessId);
 
     List<Category> findAllByBusinessIdIn(List<String> strings);
+
+    List<Category> findAllByDeletedAtIsNull();
 }

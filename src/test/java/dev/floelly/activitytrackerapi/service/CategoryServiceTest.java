@@ -10,22 +10,22 @@ import dev.floelly.activitytrackerapi.dto.response.SubCategoryResponse;
 import dev.floelly.activitytrackerapi.entity.Category;
 import dev.floelly.activitytrackerapi.entity.SubCategory;
 import dev.floelly.activitytrackerapi.exception.BadRequestException;
-import dev.floelly.activitytrackerapi.exception.EntityDeletionConflictException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
 import dev.floelly.activitytrackerapi.mapper.CategoryCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.CategoryResponseMapper;
 import dev.floelly.activitytrackerapi.mapper.SubCategoryCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.SubCategoryResponseMapper;
-import dev.floelly.activitytrackerapi.repository.CategoryAllocationRepository;
 import dev.floelly.activitytrackerapi.repository.CategoryRepository;
 import dev.floelly.activitytrackerapi.repository.SubCategoryRepository;
 import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,9 +53,6 @@ class CategoryServiceTest {
     @Mock
     private SubCategoryResponseMapper subCategoryResponseMapper;
 
-    @Mock
-    private CategoryAllocationRepository categoryAllocationRepository;
-
     @InjectMocks
     private CategoryService service;
 
@@ -64,13 +61,13 @@ class CategoryServiceTest {
         List<Category> categories = List.of(new Category(), new Category());
         CategoriesResponse expected = mock(CategoriesResponse.class);
 
-        when(categoryRepository.findAll()).thenReturn(categories);
+        when(categoryRepository.findAllByDeletedAtIsNull()).thenReturn(categories);
         when(categoryResponseMapper.toCategoriesResponse(categories)).thenReturn(expected);
 
         CategoriesResponse result = service.findAllCategories();
 
         assertThat(result).isSameAs(expected);
-        verify(categoryRepository).findAll();
+        verify(categoryRepository).findAllByDeletedAtIsNull();
         verify(categoryResponseMapper).toCategoriesResponse(categories);
     }
 
@@ -184,7 +181,7 @@ class CategoryServiceTest {
     }
 
     @Test
-    void deleteCategory_shouldDeleteCategory_whenNoActivitiesAndSubcategoriesAssigned() {
+    void deleteCategory_shouldSoftDeleteCategory_whenValidId() {
         String categoryBusinessId = "0123456789ABC";
 
         Category category = new Category();
@@ -192,14 +189,16 @@ class CategoryServiceTest {
         category.setName("Sport");
 
         when(categoryRepository.findByBusinessId(categoryBusinessId)).thenReturn(Optional.of(category));
-        when(categoryAllocationRepository.existsByCategory(category)).thenReturn(false);
-        when(subCategoryRepository.existsByCategory(category)).thenReturn(false);
 
         service.deleteCategory(categoryBusinessId);
 
+        ArgumentCaptor<Category> savedCategoryCaptor = ArgumentCaptor.forClass(Category.class);
         verify(categoryRepository).findByBusinessId(categoryBusinessId);
-        verify(categoryAllocationRepository).existsByCategory(category);
-        verify(categoryRepository).delete(category);
+        verify(categoryRepository).save(savedCategoryCaptor.capture());
+
+        Category savedCategory = savedCategoryCaptor.getValue();
+        assertThat(savedCategory.getDeletedAt()).isNotNull();
+        assertThat(savedCategory.getDeletedAt()).isBeforeOrEqualTo(LocalDateTime.now());
     }
 
     @Test
@@ -213,48 +212,7 @@ class CategoryServiceTest {
                 .hasMessage("Category not found " + categoryBusinessId);
 
         verify(categoryRepository).findByBusinessId(categoryBusinessId);
-        verifyNoInteractions(categoryAllocationRepository);
-        verify(categoryRepository, never()).delete(any());
-    }
-
-    @Test
-    void deleteCategory_shouldThrowEntityDeletionConflictException_whenActivitiesAreAssigned() {
-        String categoryBusinessId = "0123456789ABC";
-
-        Category category = new Category();
-        category.setBusinessId(categoryBusinessId);
-        category.setName("Sport");
-
-        when(categoryRepository.findByBusinessId(categoryBusinessId)).thenReturn(Optional.of(category));
-        when(categoryAllocationRepository.existsByCategory(category)).thenReturn(true);
-
-        assertThatThrownBy(() -> service.deleteCategory(categoryBusinessId))
-                .isInstanceOf(EntityDeletionConflictException.class)
-                .hasMessage("Category 'Sport' (id: 0123456789ABC) has activities assigned to it.");
-
-        verify(categoryRepository).findByBusinessId(categoryBusinessId);
-        verify(categoryAllocationRepository).existsByCategory(category);
-        verify(categoryRepository, never()).delete(any());
-    }
-
-    @Test
-    void deleteCategory_shouldThrowEntityDeletionConflictException_whenSubCategoriesAreAssigned() {
-        String categoryBusinessId = "0123456789ABA";
-
-        Category category = new Category();
-        category.setBusinessId(categoryBusinessId);
-        category.setName("Sport");
-
-        when(categoryRepository.findByBusinessId(categoryBusinessId)).thenReturn(Optional.of(category));
-        when(subCategoryRepository.existsByCategory(category)).thenReturn(true);
-
-        assertThatThrownBy(() -> service.deleteCategory(categoryBusinessId))
-                .isInstanceOf(EntityDeletionConflictException.class)
-                .hasMessage("Category 'Sport' (id: 0123456789ABA) has sub categories assigned to it.");
-
-        verify(categoryRepository).findByBusinessId(categoryBusinessId);
-        verify(subCategoryRepository).existsByCategory(category);
-        verify(categoryRepository, never()).delete(any());
+        verify(categoryRepository, never()).save(any());
     }
 
     @Test
