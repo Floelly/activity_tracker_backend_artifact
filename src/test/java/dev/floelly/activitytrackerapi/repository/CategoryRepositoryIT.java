@@ -26,6 +26,7 @@ class CategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "default",
                 "some description",
+                null,
                 List.of()
         );
     }
@@ -39,6 +40,7 @@ class CategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "shoe",
                 "some description",
+                null,
                 List.of()
         );
 
@@ -63,14 +65,14 @@ class CategoryRepositoryIT extends MySQLContainerInitializer {
     }
 
     @Test
-    void findAllByBusinessIdIn_shouldReturnAllMatchingCategories() {
+    void findAllByBusinessIdInAndDeletedAtIsNull_shouldReturnAllMatchingCategories() {
         Category allowedCategory1 = createCategory("0000123456787");
         Category allowedCategory2 = createCategory("0000123456786");
         Category notAllowedCategory = createCategory("0000123456785");
 
         categoryRepository.saveAll(List.of(allowedCategory1, allowedCategory2, notAllowedCategory));
 
-        var result = categoryRepository.findAllByBusinessIdIn(
+        var result = categoryRepository.findAllByBusinessIdInAndDeletedAtIsNull(
                 List.of(allowedCategory1.getBusinessId(), allowedCategory2.getBusinessId()));
 
         assertThat(result)
@@ -81,15 +83,15 @@ class CategoryRepositoryIT extends MySQLContainerInitializer {
     }
 
     @Test
-    void findAllByBusinessIdIn_shouldReturnEmptyWhenNotFound() {
-        var result = categoryRepository.findAllByBusinessIdIn(List.of("0000123456789", "0000123456788"));
+    void findAllByBusinessIdInAndDeletedAtIsNull_shouldReturnEmptyWhenNotFound() {
+        var result = categoryRepository.findAllByBusinessIdInAndDeletedAtIsNull(List.of("0000123456789", "0000123456788"));
 
         assertThat(result).isEmpty();
     }
 
     @Test
-    void findAllByBusinessIdIn_shouldReturnEmptyWhenGibberish() {
-        var result = categoryRepository.findAllByBusinessIdIn(List.of("miau", "wuff"));
+    void findAllByBusinessIdInAndDeletedAtIsNull_shouldReturnEmptyWhenGibberish() {
+        var result = categoryRepository.findAllByBusinessIdInAndDeletedAtIsNull(List.of("miau", "wuff"));
 
         assertThat(result).isEmpty();
     }

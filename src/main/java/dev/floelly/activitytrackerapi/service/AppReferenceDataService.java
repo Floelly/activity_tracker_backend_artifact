@@ -21,7 +21,7 @@ public class AppReferenceDataService {
 
     @Transactional(readOnly = true)
     public AppReferenceDataResponse getAppReferenceData() {
-        List<Category> categories = categoryRepository.findAll();
+        List<Category> categories = categoryRepository.findAllByDeletedAtIsNull();
         List<CategoryResponse> categoryResponses = categoryResponseMapper.toCategoryResponseList(categories);
         return new AppReferenceDataResponse(categoryResponses);
     }

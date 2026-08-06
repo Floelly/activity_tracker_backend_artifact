@@ -10,13 +10,11 @@ import dev.floelly.activitytrackerapi.dto.response.SubCategoryResponse;
 import dev.floelly.activitytrackerapi.entity.Category;
 import dev.floelly.activitytrackerapi.entity.SubCategory;
 import dev.floelly.activitytrackerapi.exception.BadRequestException;
-import dev.floelly.activitytrackerapi.exception.EntityDeletionConflictException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
 import dev.floelly.activitytrackerapi.mapper.CategoryCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.CategoryResponseMapper;
 import dev.floelly.activitytrackerapi.mapper.SubCategoryCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.SubCategoryResponseMapper;
-import dev.floelly.activitytrackerapi.repository.CategoryAllocationRepository;
 import dev.floelly.activitytrackerapi.repository.CategoryRepository;
 import dev.floelly.activitytrackerapi.repository.SubCategoryRepository;
 import io.hypersistence.tsid.TSID;
@@ -26,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,9 +52,6 @@ class CategoryServiceTest {
     @Mock
     private SubCategoryResponseMapper subCategoryResponseMapper;
 
-    @Mock
-    private CategoryAllocationRepository categoryAllocationRepository;
-
     @InjectMocks
     private CategoryService service;
 
@@ -64,13 +60,13 @@ class CategoryServiceTest {
         List<Category> categories = List.of(new Category(), new Category());
         CategoriesResponse expected = mock(CategoriesResponse.class);
 
-        when(categoryRepository.findAll()).thenReturn(categories);
+        when(categoryRepository.findAllByDeletedAtIsNull()).thenReturn(categories);
         when(categoryResponseMapper.toCategoriesResponse(categories)).thenReturn(expected);
 
         CategoriesResponse result = service.findAllCategories();
 
         assertThat(result).isSameAs(expected);
-        verify(categoryRepository).findAll();
+        verify(categoryRepository).findAllByDeletedAtIsNull();
         verify(categoryResponseMapper).toCategoriesResponse(categories);
     }
 
@@ -133,13 +129,13 @@ class CategoryServiceTest {
                 List.of()
         );
 
-        when(categoryRepository.findByBusinessId(categoryId)).thenReturn(Optional.of(category));
+        when(categoryRepository.findByBusinessIdAndDeletedAtIsNull(categoryId)).thenReturn(Optional.of(category));
         when(categoryResponseMapper.toResponse(category)).thenReturn(response);
 
         CategoryResponse result = service.updateCategory(categoryId, request);
 
         assertThat(result).isSameAs(response);
-        verify(categoryRepository).findByBusinessId(categoryId);
+        verify(categoryRepository).findByBusinessIdAndDeletedAtIsNull(categoryId);
         verify(categoryCommandMapper).updateEntity(request, category);
         verify(categoryResponseMapper).toResponse(category);
         verifyNoMoreInteractions(categoryRepository, categoryCommandMapper, categoryResponseMapper);
@@ -173,18 +169,18 @@ class CategoryServiceTest {
                 "Alle Sportaktivitäten"
         );
 
-        when(categoryRepository.findByBusinessId(categoryId)).thenReturn(Optional.empty());
+        when(categoryRepository.findByBusinessIdAndDeletedAtIsNull(categoryId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.updateCategory(categoryId, request))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessage("Category not found " + categoryId);
 
-        verify(categoryRepository).findByBusinessId(categoryId);
+        verify(categoryRepository).findByBusinessIdAndDeletedAtIsNull(categoryId);
         verifyNoInteractions(categoryCommandMapper, categoryResponseMapper);
     }
 
     @Test
-    void deleteCategory_shouldDeleteCategory_whenNoActivitiesAndSubcategoriesAssigned() {
+    void deleteCategory_shouldSoftDeleteCategory_whenCategoryExists() {
         String categoryBusinessId = "0123456789ABC";
 
         Category category = new Category();
@@ -192,14 +188,12 @@ class CategoryServiceTest {
         category.setName("Sport");
 
         when(categoryRepository.findByBusinessId(categoryBusinessId)).thenReturn(Optional.of(category));
-        when(categoryAllocationRepository.existsByCategory(category)).thenReturn(false);
-        when(subCategoryRepository.existsByCategory(category)).thenReturn(false);
 
         service.deleteCategory(categoryBusinessId);
 
+        assertThat(category.getDeletedAt()).isNotNull();
         verify(categoryRepository).findByBusinessId(categoryBusinessId);
-        verify(categoryAllocationRepository).existsByCategory(category);
-        verify(categoryRepository).delete(category);
+        verify(categoryRepository).save(category);
     }
 
     @Test
@@ -213,48 +207,25 @@ class CategoryServiceTest {
                 .hasMessage("Category not found " + categoryBusinessId);
 
         verify(categoryRepository).findByBusinessId(categoryBusinessId);
-        verifyNoInteractions(categoryAllocationRepository);
-        verify(categoryRepository, never()).delete(any());
+        verify(categoryRepository, never()).save(any());
     }
 
     @Test
-    void deleteCategory_shouldThrowEntityDeletionConflictException_whenActivitiesAreAssigned() {
+    void deleteCategory_shouldBeIdempotent_whenCategoryAlreadySoftDeleted() {
         String categoryBusinessId = "0123456789ABC";
 
         Category category = new Category();
         category.setBusinessId(categoryBusinessId);
         category.setName("Sport");
+        category.setDeletedAt(Instant.now());
 
         when(categoryRepository.findByBusinessId(categoryBusinessId)).thenReturn(Optional.of(category));
-        when(categoryAllocationRepository.existsByCategory(category)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.deleteCategory(categoryBusinessId))
-                .isInstanceOf(EntityDeletionConflictException.class)
-                .hasMessage("Category 'Sport' (id: 0123456789ABC) has activities assigned to it.");
+        service.deleteCategory(categoryBusinessId);
 
+        assertThat(category.getDeletedAt()).isNotNull();
         verify(categoryRepository).findByBusinessId(categoryBusinessId);
-        verify(categoryAllocationRepository).existsByCategory(category);
-        verify(categoryRepository, never()).delete(any());
-    }
-
-    @Test
-    void deleteCategory_shouldThrowEntityDeletionConflictException_whenSubCategoriesAreAssigned() {
-        String categoryBusinessId = "0123456789ABA";
-
-        Category category = new Category();
-        category.setBusinessId(categoryBusinessId);
-        category.setName("Sport");
-
-        when(categoryRepository.findByBusinessId(categoryBusinessId)).thenReturn(Optional.of(category));
-        when(subCategoryRepository.existsByCategory(category)).thenReturn(true);
-
-        assertThatThrownBy(() -> service.deleteCategory(categoryBusinessId))
-                .isInstanceOf(EntityDeletionConflictException.class)
-                .hasMessage("Category 'Sport' (id: 0123456789ABA) has sub categories assigned to it.");
-
-        verify(categoryRepository).findByBusinessId(categoryBusinessId);
-        verify(subCategoryRepository).existsByCategory(category);
-        verify(categoryRepository, never()).delete(any());
+        verify(categoryRepository).save(category);
     }
 
     @Test
@@ -273,7 +244,7 @@ class CategoryServiceTest {
         when(tsid.toString()).thenReturn("subcat-tsid");
 
         when(subCategoryCommandMapper.toEntity(request)).thenReturn(subCategory);
-        when(categoryRepository.findByBusinessId(categoryBusinessId)).thenReturn(Optional.of(category));
+        when(categoryRepository.findByBusinessIdAndDeletedAtIsNull(categoryBusinessId)).thenReturn(Optional.of(category));
         when(subCategoryResponseMapper.toResponse(subCategory)).thenReturn(expected);
 
         SubCategoryResponse result = service.registerNewSubCategory(request, categoryBusinessId);
@@ -294,7 +265,7 @@ class CategoryServiceTest {
         when(tsidFactory.generate()).thenReturn(tsid);
         when(tsid.toString()).thenReturn("subcat-tsid");
         when(subCategoryCommandMapper.toEntity(request)).thenReturn(subCategory);
-        when(categoryRepository.findByBusinessId(categoryBusinessId)).thenReturn(Optional.empty());
+        when(categoryRepository.findByBusinessIdAndDeletedAtIsNull(categoryBusinessId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.registerNewSubCategory(request, categoryBusinessId))
                 .isInstanceOf(NotFoundException.class)
@@ -333,5 +304,29 @@ class CategoryServiceTest {
         boolean result = service.isValidCategorySubCategoryRelation(category, subCategory);
 
         assertThat(result).isFalse();
+    }
+
+    @Test
+    void findActiveCategoryByBusinessId_shouldReturnCategory_whenExistsAndNotDeleted() {
+        String businessId = "cat-1";
+        Category category = new Category();
+        category.setBusinessId(businessId);
+
+        when(categoryRepository.findByBusinessIdAndDeletedAtIsNull(businessId)).thenReturn(Optional.of(category));
+
+        Category result = service.findActiveCategoryByBusinessId(businessId);
+
+        assertThat(result).isSameAs(category);
+    }
+
+    @Test
+    void findActiveCategoryByBusinessId_shouldThrowNotFound_whenCategoryDoesNotExist() {
+        String businessId = "missing-cat";
+
+        when(categoryRepository.findByBusinessIdAndDeletedAtIsNull(businessId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.findActiveCategoryByBusinessId(businessId))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Category not found " + businessId);
     }
 }

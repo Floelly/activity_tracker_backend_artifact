@@ -347,6 +347,37 @@ class ActivityServiceTest {
     }
 
     @Test
+    void registerNewActivity_shouldThrowWhenCategoryIsDeleted() {
+        CreateActivityRequest request = mock(CreateActivityRequest.class);
+        Activity mappedActivity = new Activity();
+        CreateCategoryAllocationRequest allocationRequest = mock(CreateCategoryAllocationRequest.class);
+
+        Category category = new Category();
+        category.setBusinessId("cat-1");
+        category.setName("Deleted Category");
+        category.setDeletedAt(Instant.now());
+
+        when(commandMapper.toEntity(request)).thenReturn(mappedActivity);
+        when(request.categoryAllocations()).thenReturn(List.of(allocationRequest));
+        when(allocationRequest.categoryId()).thenReturn("cat-1");
+        when(allocationRequest.subCategoryId()).thenReturn(null);
+        when(allocationRequest.percentage()).thenReturn(100);
+
+        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
+
+        TSID tsid = mock(TSID.class);
+        when(tsidFactory.generate()).thenReturn(tsid);
+        when(tsid.toString()).thenReturn("act-tsid");
+
+        assertThatThrownBy(() -> service.registerNewActivity(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("deleted")
+                .hasMessageContaining("Deleted Category");
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     void registerNewActivity_shouldThrowWhenSubCategoryNotRelatedToCategory() {
         CreateActivityRequest request = mock(CreateActivityRequest.class);
         Activity mappedActivity = new Activity();
@@ -650,6 +681,37 @@ class ActivityServiceTest {
         assertThat(activity.getCategoryAllocations()).hasSize(1);
         CategoryAllocation remaining = activity.getCategoryAllocations().iterator().next();
         assertThat(remaining.getCategory().getBusinessId()).isEqualTo("cat-new");
+    }
+
+    @Test
+    void updateActivity_shouldThrowWhenCategoryIsDeleted() {
+        String businessId = "act-1";
+
+        Activity activity = new Activity();
+        activity.setBusinessId(businessId);
+        activity.setCategoryAllocations(new HashSet<>());
+
+        Category category = new Category();
+        category.setBusinessId("cat-1");
+        category.setName("Deleted Category");
+        category.setDeletedAt(Instant.now());
+
+        UpdateActivityRequest request = new UpdateActivityRequest(
+                businessId,
+                "Updated title",
+                "Updated notes",
+                Instant.parse("2026-05-26T08:00:00Z"),
+                Instant.parse("2026-05-26T09:00:00Z"),
+                List.of(new CreateCategoryAllocationRequest(100, "cat-1", null))
+        );
+
+        when(repository.findByBusinessId(businessId)).thenReturn(Optional.of(activity));
+        when(categoryRepository.findByBusinessId("cat-1")).thenReturn(Optional.of(category));
+
+        assertThatThrownBy(() -> service.updateActivity(businessId, request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("deleted")
+                .hasMessageContaining("Deleted Category");
     }
 
     @Test

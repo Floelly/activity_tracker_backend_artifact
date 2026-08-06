@@ -9,5 +9,9 @@ import java.util.Optional;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByBusinessId(String businessId);
 
-    List<Category> findAllByBusinessIdIn(List<String> strings);
+    Optional<Category> findByBusinessIdAndDeletedAtIsNull(String businessId);
+
+    List<Category> findAllByDeletedAtIsNull();
+
+    List<Category> findAllByBusinessIdInAndDeletedAtIsNull(List<String> strings);
 }

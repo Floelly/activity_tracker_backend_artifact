@@ -60,12 +60,12 @@ class ServiceTest {
                 List.of("cat-1", "cat-2")
         );
 
-        when(categoryRepository.findAllByBusinessIdIn(filter.category()))
+        when(categoryRepository.findAllByBusinessIdInAndDeletedAtIsNull(filter.category()))
                 .thenReturn(List.of(createCategory("cat-1", "Sport")));
 
         assertThrows(NotFoundException.class, () -> service.getActivitiesDashboardResponse(filter));
 
-        verify(categoryRepository).findAllByBusinessIdIn(filter.category());
+        verify(categoryRepository).findAllByBusinessIdInAndDeletedAtIsNull(filter.category());
         verifyNoInteractions(activityRepository, aggregator, periodFactory, responseMapper);
     }
 
@@ -93,7 +93,7 @@ class ServiceTest {
         ));
         TimeSeriesResponse timeSeries = new TimeSeriesResponse(TimeGranularity.DAY, List.of());
 
-        when(categoryRepository.findAllByBusinessIdIn(filter.category())).thenReturn(requestedCategories);
+        when(categoryRepository.findAllByBusinessIdInAndDeletedAtIsNull(filter.category())).thenReturn(requestedCategories);
         when(activityRepository.findAll(any(Specification.class))).thenReturn(activities);
         when(periodFactory.buildPeriods(filter)).thenReturn(orderedPeriods);
         when(aggregator.aggregateSecondsByPeriodAndCategory(activities, orderedPeriods)).thenReturn(aggregated);

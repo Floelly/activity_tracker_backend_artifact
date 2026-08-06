@@ -27,6 +27,7 @@ class CategoryResponseMapperTest {
                 "#123456",
                 "cat-icon",
                 "some description",
+                null,
                 List.of()
         );
 
@@ -51,6 +52,7 @@ class CategoryResponseMapperTest {
                 "#123456",
                 "cat-icon",
                 "some description",
+                null,
                 List.of()
         );
         SubCategory subCategory = new SubCategory(
@@ -81,6 +83,7 @@ class CategoryResponseMapperTest {
                 "#123456",
                 "cat-icon",
                 "some description",
+                null,
                 List.of()
         );
         category.setSubCategories(List.of(
@@ -130,6 +133,7 @@ class CategoryResponseMapperTest {
                 "#123456",
                 "cat-icon",
                 "some description",
+                null,
                 List.of()
         );
         Category category2 = new Category(
@@ -139,6 +143,7 @@ class CategoryResponseMapperTest {
                 "#123456",
                 "cat-icon",
                 "some description",
+                null,
                 List.of()
         );
 

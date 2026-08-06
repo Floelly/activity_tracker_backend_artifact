@@ -49,6 +49,7 @@ class CategoryCommandMapperTest {
                 "#123456",
                 "cat-icon",
                 "cat-description",
+                null,
                 List.of()
         );
 
@@ -79,6 +80,7 @@ class CategoryCommandMapperTest {
                 "#123456",
                 "cat-icon",
                 "cat-description",
+                null,
                 List.of()
         );
 

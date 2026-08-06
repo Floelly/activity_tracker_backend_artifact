@@ -54,7 +54,7 @@ public class Service {
             return List.of();
         }
         List<String> allowedCategoryIds = filter.categoryIds();
-        List<Category> categories = categoryRepository.findAllByBusinessIdIn(allowedCategoryIds);
+        List<Category> categories = categoryRepository.findAllByBusinessIdInAndDeletedAtIsNull(allowedCategoryIds);
         if (categories.size() != allowedCategoryIds.size()) {
             List<String> missingIds = allowedCategoryIds.stream()
                     .filter(id -> categories.stream().noneMatch(category -> category.getBusinessId().equals(id)))

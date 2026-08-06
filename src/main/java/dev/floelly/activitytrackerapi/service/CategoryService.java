@@ -10,13 +10,11 @@ import dev.floelly.activitytrackerapi.dto.response.SubCategoryResponse;
 import dev.floelly.activitytrackerapi.entity.Category;
 import dev.floelly.activitytrackerapi.entity.SubCategory;
 import dev.floelly.activitytrackerapi.exception.BadRequestException;
-import dev.floelly.activitytrackerapi.exception.EntityDeletionConflictException;
 import dev.floelly.activitytrackerapi.exception.NotFoundException;
 import dev.floelly.activitytrackerapi.mapper.CategoryCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.CategoryResponseMapper;
 import dev.floelly.activitytrackerapi.mapper.SubCategoryCommandMapper;
 import dev.floelly.activitytrackerapi.mapper.SubCategoryResponseMapper;
-import dev.floelly.activitytrackerapi.repository.CategoryAllocationRepository;
 import dev.floelly.activitytrackerapi.repository.CategoryRepository;
 import dev.floelly.activitytrackerapi.repository.SubCategoryRepository;
 import dev.floelly.activitytrackerapi.validation.ValidTSID;
@@ -25,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -40,11 +39,10 @@ public class CategoryService {
     private final SubCategoryRepository subCategoryRepository;
     private final SubCategoryCommandMapper subCategoryCommandMapper;
     private final SubCategoryResponseMapper subCategoryResponseMapper;
-    private final CategoryAllocationRepository categoryAllocationRepository;
 
     @Transactional(readOnly = true)
     public CategoriesResponse findAllCategories() {
-        List<Category> categories = categoryRepository.findAll();
+        List<Category> categories = categoryRepository.findAllByDeletedAtIsNull();
         return categoryResponseMapper.toCategoriesResponse(categories);
     }
 
@@ -61,24 +59,24 @@ public class CategoryService {
         if (!categoryRequest.id().equals(categoryId)) {
             throw new BadRequestException("Category id in request does not match the path variable");
         }
-        Category category = findCategoryByBusinessId(categoryId);
+        Category category = findActiveCategoryByBusinessId(categoryId);
         categoryCommandMapper.updateEntity(categoryRequest, category);
         return categoryResponseMapper.toResponse(category);
     }
 
     @Transactional
     public void deleteCategory(@ValidTSID String categoryBusinessId) {
-        Category category = findCategoryByBusinessId(categoryBusinessId);
-        assertNoActivitiesAssignedToCategory(category);
-        assertNoSubCategoriesAssignedToCategory(category);
-        categoryRepository.delete(category);
+        Category category = categoryRepository.findByBusinessId(categoryBusinessId)
+                .orElseThrow(() -> new NotFoundException("Category not found " + categoryBusinessId));
+        category.setDeletedAt(Instant.now());
+        categoryRepository.save(category);
     }
 
     @Transactional
     public SubCategoryResponse registerNewSubCategory(CreateSubCategoryRequest subCategoryRequest, String categoryBusinessId) {
         SubCategory subCategory = subCategoryCommandMapper.toEntity(subCategoryRequest);
         subCategory.setBusinessId(tsidFactory.generate().toString());
-        subCategory.setCategory(findCategoryByBusinessId(categoryBusinessId));
+        subCategory.setCategory(findActiveCategoryByBusinessId(categoryBusinessId));
         subCategoryRepository.save(subCategory);
         return subCategoryResponseMapper.toResponse(subCategory);
     }
@@ -94,22 +92,8 @@ public class CategoryService {
         return subCategory.getCategory().getBusinessId().equals(category.getBusinessId());
     }
 
-    private Category findCategoryByBusinessId(String businessId) {
-        return categoryRepository.findByBusinessId(businessId)
+    public Category findActiveCategoryByBusinessId(String businessId) {
+        return categoryRepository.findByBusinessIdAndDeletedAtIsNull(businessId)
                 .orElseThrow(() -> new NotFoundException("Category not found " + businessId));
-    }
-
-    private void assertNoActivitiesAssignedToCategory(Category category) {
-        if (categoryAllocationRepository.existsByCategory(category)) {
-            throw new EntityDeletionConflictException("Category '" + category.getName() + "' (id: " + category.getBusinessId()
-                    + ") has activities assigned to it.");
-        }
-    }
-
-    private void assertNoSubCategoriesAssignedToCategory(Category category) {
-        if (subCategoryRepository.existsByCategory(category)) {
-            throw new EntityDeletionConflictException("Category '" + category.getName() + "' (id: " + category.getBusinessId()
-                    + ") has sub categories assigned to it.");
-        }
     }
 }
