@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.mysql.MySQLContainer;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
@@ -29,9 +28,6 @@ class CategoryControllerIT {
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @Autowired
-    private MySQLContainer mysql;
 
     @Test
     void shouldReturn201_onPostCategory_whenValidRequest() throws Exception {
@@ -284,13 +280,13 @@ class CategoryControllerIT {
     }
 
     @Test
-    void shouldReturn409_onDeleteCategory_whenCategoryHasAssignedActivities() throws Exception {
+    void shouldSoftDeleteCategory_whenCategoryHasAssignedActivities() throws Exception {
         String categoryId = createCategoryAndGetId();
 
         createActivityAssignedToCategory(categoryId);
 
         mockMvc.perform(delete("/api/categories/" + categoryId))
-                .andExpect(status().isConflict());
+                .andExpect(status().isNoContent());
     }
 
 
