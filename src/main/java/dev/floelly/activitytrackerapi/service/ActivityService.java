@@ -133,6 +133,9 @@ public class ActivityService {
         String subCategoryBusinessId = request.subCategoryId();
         Category category = categoryRepository.findByBusinessId(categoryBusinessId)
                 .orElseThrow(() -> generateNotFoundException("Category", categoryBusinessId));
+        if (category.isDeleted()) {
+            throw new BadRequestException("Category '" + category.getName() + "' (id: " + categoryBusinessId + ") has been deleted.");
+        }
         SubCategory subCategory = null;
         if (subCategoryBusinessId != null) {
             subCategory = subCategoryRepository.findByBusinessId(subCategoryBusinessId)

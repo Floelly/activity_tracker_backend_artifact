@@ -60,12 +60,33 @@ class ServiceTest {
                 List.of("cat-1", "cat-2")
         );
 
-        when(categoryRepository.findAllByBusinessIdIn(filter.category()))
+        when(categoryRepository.findAllByBusinessIdInAndDeletedAtIsNull(filter.category()))
                 .thenReturn(List.of(createCategory("cat-1", "Sport")));
 
         assertThrows(NotFoundException.class, () -> service.getActivitiesDashboardResponse(filter));
 
-        verify(categoryRepository).findAllByBusinessIdIn(filter.category());
+        verify(categoryRepository).findAllByBusinessIdInAndDeletedAtIsNull(filter.category());
+        verifyNoInteractions(activityRepository, aggregator, periodFactory, responseMapper);
+    }
+
+    @Test
+    void getActivitiesDashboardResponse_shouldThrowNotFoundException_whenRequestedCategoryIsDeleted() {
+        ActivitiesDashboardFilterDTO filter = new ActivitiesDashboardFilterDTO(
+                Instant.parse("2026-06-01T00:00:00Z"),
+                Instant.parse("2026-06-02T00:00:00Z"),
+                TimeGranularity.DAY,
+                List.of("cat-deleted")
+        );
+
+        Category deletedCategory = createCategory("cat-deleted", "Old Category");
+        deletedCategory.setDeletedAt(Instant.parse("2026-06-01T00:00:00Z"));
+
+        when(categoryRepository.findAllByBusinessIdInAndDeletedAtIsNull(filter.category()))
+                .thenReturn(List.of());
+
+        assertThrows(NotFoundException.class, () -> service.getActivitiesDashboardResponse(filter));
+
+        verify(categoryRepository).findAllByBusinessIdInAndDeletedAtIsNull(filter.category());
         verifyNoInteractions(activityRepository, aggregator, periodFactory, responseMapper);
     }
 
@@ -93,7 +114,7 @@ class ServiceTest {
         ));
         TimeSeriesResponse timeSeries = new TimeSeriesResponse(TimeGranularity.DAY, List.of());
 
-        when(categoryRepository.findAllByBusinessIdIn(filter.category())).thenReturn(requestedCategories);
+        when(categoryRepository.findAllByBusinessIdInAndDeletedAtIsNull(filter.category())).thenReturn(requestedCategories);
         when(activityRepository.findAll(any(Specification.class))).thenReturn(activities);
         when(periodFactory.buildPeriods(filter)).thenReturn(orderedPeriods);
         when(aggregator.aggregateSecondsByPeriodAndCategory(activities, orderedPeriods)).thenReturn(aggregated);
@@ -146,6 +167,45 @@ class ServiceTest {
                 .extracting(Category::getBusinessId)
                 .containsExactlyInAnyOrder("cat-1", "cat-2");
         verifyNoInteractions(categoryRepository);
+    }
+
+    @Test
+    void getActivitiesDashboardResponse_shouldExcludeDeletedCategories_whenResolvingRelevantCategories() {
+        ActivitiesDashboardFilterDTO filter = new ActivitiesDashboardFilterDTO(
+                Instant.parse("2026-06-01T00:00:00Z"),
+                Instant.parse("2026-06-02T00:00:00Z"),
+                TimeGranularity.DAY,
+                null
+        );
+
+        Category activeCategory = createCategory("cat-active", "Active");
+        Category deletedCategory = createCategory("cat-deleted", "Deleted");
+        deletedCategory.setDeletedAt(Instant.parse("2026-06-01T00:00:00Z"));
+
+        Activity activity1 = createActivity("activity-1", activeCategory);
+        Activity activity2 = createActivity("activity-2", deletedCategory);
+
+        List<Activity> activities = List.of(activity1, activity2);
+        List<PeriodKey> orderedPeriods = List.of(
+                new PeriodKey(Instant.parse("2026-06-01T00:00:00Z"), Instant.parse("2026-06-02T00:00:00Z"))
+        );
+        Map<PeriodKey, Map<String, Long>> aggregated = Map.of();
+        SummaryResponse summary = new SummaryResponse(10, 10, List.of());
+        TimeSeriesResponse timeSeries = new TimeSeriesResponse(TimeGranularity.DAY, List.of());
+
+        when(activityRepository.findAll(any(Specification.class))).thenReturn(activities);
+        when(periodFactory.buildPeriods(filter)).thenReturn(orderedPeriods);
+        when(aggregator.aggregateSecondsByPeriodAndCategory(activities, orderedPeriods)).thenReturn(aggregated);
+        when(responseMapper.buildSummary(anyList(), eq(aggregated), eq(1))).thenReturn(summary);
+        when(responseMapper.buildTimeSeries(eq(TimeGranularity.DAY), eq(orderedPeriods), eq(aggregated), anyList())).thenReturn(timeSeries);
+
+        service.getActivitiesDashboardResponse(filter);
+
+        verify(responseMapper).buildSummary(categoriesCaptor.capture(), eq(aggregated), eq(1));
+
+        assertThat(categoriesCaptor.getValue())
+                .extracting(Category::getBusinessId)
+                .containsExactly("cat-active");
     }
 
     @Test

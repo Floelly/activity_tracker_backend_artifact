@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,6 +27,7 @@ class CategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "default",
                 "some description",
+                null,
                 List.of()
         );
     }
@@ -39,6 +41,7 @@ class CategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "shoe",
                 "some description",
+                null,
                 List.of()
         );
 
@@ -92,5 +95,60 @@ class CategoryRepositoryIT extends MySQLContainerInitializer {
         var result = categoryRepository.findAllByBusinessIdIn(List.of("miau", "wuff"));
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findAllByDeletedAtIsNull_shouldReturnOnlyNonDeletedCategories() {
+        Category active = categoryRepository.save(createCategory("0000000000001"));
+        Category deleted = categoryRepository.save(createCategory("0000000000002"));
+        deleted.setDeletedAt(Instant.now());
+        categoryRepository.save(deleted);
+
+        var result = categoryRepository.findAllByDeletedAtIsNull();
+
+        assertThat(result)
+                .isNotNull()
+                .hasSize(1)
+                .extracting(Category::getBusinessId)
+                .containsExactly("0000000000001");
+    }
+
+    @Test
+    void findByBusinessIdAndDeletedAtIsNull_shouldReturnCategory_whenNotDeleted() {
+        Category active = categoryRepository.save(createCategory("0000000000003"));
+
+        var result = categoryRepository.findByBusinessIdAndDeletedAtIsNull("0000000000003");
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getBusinessId()).isEqualTo("0000000000003");
+    }
+
+    @Test
+    void findByBusinessIdAndDeletedAtIsNull_shouldReturnEmpty_whenDeleted() {
+        Category deleted = categoryRepository.save(createCategory("0000000000004"));
+        deleted.setDeletedAt(Instant.now());
+        categoryRepository.save(deleted);
+
+        var result = categoryRepository.findByBusinessIdAndDeletedAtIsNull("0000000000004");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findAllByBusinessIdInAndDeletedAtIsNull_shouldExcludeDeletedCategories() {
+        Category active1 = categoryRepository.save(createCategory("0000000000005"));
+        Category active2 = categoryRepository.save(createCategory("0000000000006"));
+        Category deleted = categoryRepository.save(createCategory("0000000000007"));
+        deleted.setDeletedAt(Instant.now());
+        categoryRepository.save(deleted);
+
+        var result = categoryRepository.findAllByBusinessIdInAndDeletedAtIsNull(
+                List.of("0000000000005", "0000000000006", "0000000000007"));
+
+        assertThat(result)
+                .isNotNull()
+                .hasSize(2)
+                .extracting(Category::getBusinessId)
+                .containsExactlyInAnyOrder("0000000000005", "0000000000006");
     }
 }

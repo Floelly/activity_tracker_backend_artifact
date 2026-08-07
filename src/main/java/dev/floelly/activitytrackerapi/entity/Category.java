@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.NaturalId;
 
+import java.time.Instant;
 import java.util.List;
 
 @Entity
@@ -43,6 +44,13 @@ public class Category {
     @Column(length = 255)
     private String description;
 
+    @Column
+    private Instant deletedAt;
+
     @OneToMany(mappedBy = "category")
     private List<SubCategory> subCategories;
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
 }

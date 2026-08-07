@@ -30,6 +30,7 @@ class SubCategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "shoe",
                 "some description",
+                null,
                 List.of()
         ));
 
@@ -67,6 +68,7 @@ class SubCategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "shoe",
                 "some description",
+                null,
                 List.of()
         ));
 
@@ -77,6 +79,7 @@ class SubCategoryRepositoryIT extends MySQLContainerInitializer {
                 "#654321",
                 "briefcase",
                 "other description",
+                null,
                 List.of()
         ));
 
@@ -127,6 +130,7 @@ class SubCategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "shoe",
                 "some description",
+                null,
                 List.of()
         ));
 
@@ -152,6 +156,7 @@ class SubCategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "shoe",
                 "some description",
+                null,
                 List.of()
         ));
 
@@ -177,6 +182,7 @@ class SubCategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "shoe",
                 "some description",
+                null,
                 List.of()
         ));
         Category work = categoryRepository.save(new Category(
@@ -186,6 +192,7 @@ class SubCategoryRepositoryIT extends MySQLContainerInitializer {
                 "#123456",
                 "shoe",
                 "some description",
+                null,
                 List.of()
         ));
 
