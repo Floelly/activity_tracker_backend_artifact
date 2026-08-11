@@ -54,9 +54,9 @@ class ActivityCommandMapperTest {
         assertThat(activity.getBusinessId()).isNull();
         assertThat(activity.getTitle()).isEqualTo("title");
         assertThat(activity.getNotes()).isEqualTo("notes");
-        assertThat(activity.getCategoryAllocations()).isEmpty();
-        assertThat(activity.getAttributes()).isEmpty();
-        assertThat(activity.getTags()).isEmpty();
+        assertThat(activity.getCategoryAllocations()).isNullOrEmpty();
+        assertThat(activity.getAttributes()).isNullOrEmpty();
+        assertThat(activity.getTags()).isNullOrEmpty();
         assertThat(activity.getCreatedAt()).isNull();
         assertThat(activity.getUpdatedAt()).isNull();
     }
