@@ -1,24 +1,45 @@
 package dev.floelly.activitytrackerapi.config;
 
+import dev.floelly.activitytrackerapi.controller.ActivityController;
+import dev.floelly.activitytrackerapi.service.ActivityService;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import java.util.Map;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(ActivityController.class)
+@Import(CorsConfig.class)
 class CorsConfigTest {
 
-    private final CorsConfig corsConfig = new CorsConfig();
+    @Autowired
+    MockMvc mockMvc;
+
+    @MockitoBean
+    private ActivityService activityService;
 
     @Test
-    void addCorsMappings_shouldAllowConfiguredOriginMethodsAndHeadersForApiPaths() {
-        CorsRegistry registry = new CorsRegistry();
-        corsConfig.addCorsMappings(registry);
-        Map<String, CorsConfiguration> configMap = registry.getCorsConfigurations();
-        CorsConfiguration config = configMap.get("/api/**");
-        assertThat(config).isNotNull();
-        assertThat(config.getAllowedOrigins()).contains("http://localhost:5173");
-        assertThat(config.getAllowedMethods()).contains("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD");
-        assertThat(config.getAllowedHeaders()).contains("*");
+    void shouldReturnCorsHeadersForAllowedOrigin() throws Exception {
+        mockMvc.perform(options("/api/activities")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", "content-type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+                .andExpect(header().exists("Access-Control-Allow-Methods"))
+                .andExpect(header().exists("Access-Control-Allow-Headers"));
+    }
+
+    @Test
+    void shouldNotReturnCorsHeadersForDisallowedOrigin() throws Exception {
+        mockMvc.perform(options("/api/activities")
+                        .header("Origin", "http://bad-ppl.com")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden());
     }
 }
