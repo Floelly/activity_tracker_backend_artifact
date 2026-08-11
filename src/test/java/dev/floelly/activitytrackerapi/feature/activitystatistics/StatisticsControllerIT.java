@@ -38,8 +38,8 @@ class StatisticsControllerIT {
 
         // Act & Assert
         mockMvc.perform(get("/api/statistics")
-                .param("fromStartAt", "2041-01-01T00:00:00Z")
-                .param("toStartAt", "2041-01-03T00:00:00Z"))
+                        .param("fromStartAt", "2041-01-01T00:00:00Z")
+                        .param("toStartAt", "2041-01-03T00:00:00Z"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.totalActivities").value(2))
@@ -56,8 +56,8 @@ class StatisticsControllerIT {
 
         // Act & Assert: Only the 2 in-range activities should be counted (14400s total, 7200s avg)
         mockMvc.perform(get("/api/statistics")
-                .param("fromStartAt", "2042-02-01T00:00:00Z")
-                .param("toStartAt", "2042-02-03T00:00:00Z"))
+                        .param("fromStartAt", "2042-02-01T00:00:00Z")
+                        .param("toStartAt", "2042-02-03T00:00:00Z"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalActivities").value(2))
                 .andExpect(jsonPath("$.totalDurationInSeconds").value(14400))
@@ -77,10 +77,10 @@ class StatisticsControllerIT {
 
         // Act & Assert: Only A and B should match (10800s total, 5400s avg)
         mockMvc.perform(get("/api/statistics")
-                .param("category", categoryA)
-                .param("category", categoryB)
-                .param("fromStartAt", "2043-01-01T00:00:00Z")
-                .param("toStartAt", "2043-01-04T00:00:00Z"))
+                        .param("category", categoryA)
+                        .param("category", categoryB)
+                        .param("fromStartAt", "2043-01-01T00:00:00Z")
+                        .param("toStartAt", "2043-01-04T00:00:00Z"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalActivities").value(2))
                 .andExpect(jsonPath("$.totalDurationInSeconds").value(10800))
@@ -90,22 +90,22 @@ class StatisticsControllerIT {
     @Test
     void getStatistics_shouldReturnBadRequest_whenFromStartAtAfterToStartAt() throws Exception {
         mockMvc.perform(get("/api/statistics")
-                .param("fromStartAt", "2044-01-02T00:00:00Z")
-                .param("toStartAt", "2044-01-01T00:00:00Z"))
+                        .param("fromStartAt", "2044-01-02T00:00:00Z")
+                        .param("toStartAt", "2044-01-01T00:00:00Z"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void getStatistics_shouldReturnBadRequest_whenCategoryIdIsInvalidTSID() throws Exception {
         mockMvc.perform(get("/api/statistics")
-                .param("category", "invalid-id-not-tsid"))
+                        .param("category", "invalid-id-not-tsid"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void getStatistics_shouldReturnNotFound_whenCategoryIdDoesNotExist() throws Exception {
         mockMvc.perform(get("/api/statistics")
-                .param("category", "0000000000001"))
+                        .param("category", "0000000000001"))
                 .andExpect(status().isNotFound());
     }
 
@@ -113,8 +113,8 @@ class StatisticsControllerIT {
     void getStatistics_shouldReturnZeroMetrics_whenNoActivitiesMatch() throws Exception {
         // Act & Assert: Request statistics for a date range far in the past with no activities
         mockMvc.perform(get("/api/statistics")
-                .param("fromStartAt", "1900-01-01T00:00:00Z")
-                .param("toStartAt", "1900-12-31T23:59:59Z"))
+                        .param("fromStartAt", "1900-01-01T00:00:00Z")
+                        .param("toStartAt", "1900-12-31T23:59:59Z"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalActivities").value(0))
                 .andExpect(jsonPath("$.totalDurationInSeconds").value(0))
