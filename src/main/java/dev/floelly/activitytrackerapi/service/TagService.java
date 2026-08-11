@@ -36,15 +36,16 @@ public class TagService {
 
     @Transactional(readOnly = true)
     public TagsResponse searchTags(String query, int limit) {
-        Specification<Tag> specification;
-        if (query == null || query.trim().isEmpty()) {
-            specification = Specification.where(null);
+        Sort sort = Sort.by(Sort.Direction.ASC, "label");
+
+        List<Tag> tags;
+        if (query == null || query.isBlank()) {
+            tags = repository.findAll(PageRequest.of(0, limit, sort)).getContent();
         } else {
-            specification = TagSpecifications.labelContains(query.trim());
+            Specification<Tag> spec = TagSpecifications.labelContains(query.trim());
+            tags = repository.findAll(spec, PageRequest.of(0, limit, sort)).getContent();
         }
 
-        PageRequest pageable = PageRequest.of(0, limit, Sort.by("label"));
-        List<Tag> tags = repository.findAll(specification, pageable).getContent();
         return responseMapper.toSearchTagsResponse(tags);
     }
 

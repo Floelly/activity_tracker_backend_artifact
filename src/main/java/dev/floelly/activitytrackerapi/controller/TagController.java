@@ -38,7 +38,7 @@ public class TagController {
     @GetMapping
     public ResponseEntity<TagsResponse> getAllTags(
             @RequestParam(required = false) @Size(max = 50) String query,
-            @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(100) int limit) {
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit) {
         TagsResponse response = tagService.searchTags(query, limit);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
