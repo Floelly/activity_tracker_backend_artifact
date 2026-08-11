@@ -115,7 +115,7 @@ public class ActivityService {
 
     private Activity findByBusinessId(String businessId) {
         return repository.findByBusinessId(businessId)
-                .orElseThrow(() -> generateNotFoundException("Activity", businessId));
+                .orElseThrow(() -> new NotFoundException("Activity" + " with id '" + businessId + "' not found."));
     }
 
     @SuppressWarnings("PMD.LooseCoupling")
@@ -175,7 +175,4 @@ public class ActivityService {
         return allocation.getCategory().getBusinessId() + "::" + subCategoryId;
     }
 
-    private NotFoundException generateNotFoundException(String resource, String id) {
-        return new NotFoundException(resource + " with id '" + id + "' not found.");
-    }
 }
