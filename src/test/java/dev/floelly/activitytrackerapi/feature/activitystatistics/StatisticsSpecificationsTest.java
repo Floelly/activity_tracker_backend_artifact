@@ -1,17 +1,17 @@
 package dev.floelly.activitytrackerapi.feature.activitystatistics;
 
-import dev.floelly.activitytrackerapi.MySQLContainerInitializer;
 import dev.floelly.activitytrackerapi.entity.Activity;
 import dev.floelly.activitytrackerapi.entity.Category;
 import dev.floelly.activitytrackerapi.entity.CategoryAllocation;
 import dev.floelly.activitytrackerapi.feature.activitystatistics.dto.request.StatisticsFilterDTO;
 import dev.floelly.activitytrackerapi.repository.ActivityRepository;
 import dev.floelly.activitytrackerapi.repository.CategoryRepository;
+import dev.floelly.activitytrackerapi.repository.MySQLContainerInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Instant;
@@ -38,8 +38,8 @@ class StatisticsSpecificationsTest extends MySQLContainerInitializer {
 
     @Test
     void withFilter_shouldReturnAllActivities_whenFilterIsNull() {
-        createAndSaveActivity("act-1", "2041-01-01T10:00:00Z", "2041-01-01T11:00:00Z");
-        createAndSaveActivity("act-2", "2041-01-02T10:00:00Z", "2041-01-02T12:00:00Z");
+        createAndSaveActivity("act-1", "2031-01-01T10:00:00Z", "2031-01-01T11:00:00Z");
+        createAndSaveActivity("act-2", "2031-01-02T10:00:00Z", "2031-01-02T12:00:00Z");
 
         StatisticsFilterDTO filter = new StatisticsFilterDTO(null, null, null);
         Specification<Activity> spec = StatisticsSpecifications.withFilter(filter);
@@ -51,11 +51,11 @@ class StatisticsSpecificationsTest extends MySQLContainerInitializer {
 
     @Test
     void withFilter_shouldFilterByFromStartAt() {
-        createAndSaveActivity("act-1", "2041-01-01T10:00:00Z", "2041-01-01T11:00:00Z");
-        createAndSaveActivity("act-2", "2041-01-03T10:00:00Z", "2041-01-03T12:00:00Z");
+        createAndSaveActivity("act-1", "2031-01-01T10:00:00Z", "2031-01-01T11:00:00Z");
+        createAndSaveActivity("act-2", "2031-01-03T10:00:00Z", "2031-01-03T12:00:00Z");
 
         StatisticsFilterDTO filter = new StatisticsFilterDTO(
-                Instant.parse("2041-01-02T00:00:00Z"),
+                Instant.parse("2031-01-02T00:00:00Z"),
                 null,
                 null
         );
@@ -69,12 +69,12 @@ class StatisticsSpecificationsTest extends MySQLContainerInitializer {
 
     @Test
     void withFilter_shouldFilterByToStartAt() {
-        createAndSaveActivity("act-1", "2041-01-01T10:00:00Z", "2041-01-01T11:00:00Z");
-        createAndSaveActivity("act-2", "2041-01-03T10:00:00Z", "2041-01-03T12:00:00Z");
+        createAndSaveActivity("act-1", "2031-01-01T10:00:00Z", "2031-01-01T11:00:00Z");
+        createAndSaveActivity("act-2", "2031-01-03T10:00:00Z", "2031-01-03T12:00:00Z");
 
         StatisticsFilterDTO filter = new StatisticsFilterDTO(
                 null,
-                Instant.parse("2041-01-02T00:00:00Z"),
+                Instant.parse("2031-01-02T00:00:00Z"),
                 null
         );
         Specification<Activity> spec = StatisticsSpecifications.withFilter(filter);
@@ -87,13 +87,13 @@ class StatisticsSpecificationsTest extends MySQLContainerInitializer {
 
     @Test
     void withFilter_shouldFilterByDateRange() {
-        createAndSaveActivity("act-1", "2041-01-01T10:00:00Z", "2041-01-01T11:00:00Z");
-        createAndSaveActivity("act-2", "2041-01-15T10:00:00Z", "2041-01-15T12:00:00Z");
-        createAndSaveActivity("act-3", "2041-02-01T10:00:00Z", "2041-02-01T13:00:00Z");
+        createAndSaveActivity("act-1", "2031-01-01T10:00:00Z", "2031-01-01T11:00:00Z");
+        createAndSaveActivity("act-2", "2031-01-15T10:00:00Z", "2031-01-15T12:00:00Z");
+        createAndSaveActivity("act-3", "2031-02-01T10:00:00Z", "2031-02-01T13:00:00Z");
 
         StatisticsFilterDTO filter = new StatisticsFilterDTO(
-                Instant.parse("2041-01-10T00:00:00Z"),
-                Instant.parse("2041-01-31T23:59:59Z"),
+                Instant.parse("2031-01-10T00:00:00Z"),
+                Instant.parse("2031-01-31T23:59:59Z"),
                 null
         );
         Specification<Activity> spec = StatisticsSpecifications.withFilter(filter);
@@ -107,8 +107,8 @@ class StatisticsSpecificationsTest extends MySQLContainerInitializer {
     @Test
     void withFilter_shouldFilterByCategory() {
         Category category = createAndSaveCategory("cat-1");
-        createAndSaveActivityWithCategory("act-1", "2041-01-01T10:00:00Z", "2041-01-01T11:00:00Z", category);
-        createAndSaveActivity("act-2", "2041-01-02T10:00:00Z", "2041-01-02T12:00:00Z");
+        createAndSaveActivityWithCategory("act-1", "2031-01-01T10:00:00Z", "2031-01-01T11:00:00Z", category);
+        createAndSaveActivity("act-2", "2031-01-02T10:00:00Z", "2031-01-02T12:00:00Z");
 
         StatisticsFilterDTO filter = new StatisticsFilterDTO(
                 null,
@@ -129,9 +129,9 @@ class StatisticsSpecificationsTest extends MySQLContainerInitializer {
         Category categoryB = createAndSaveCategory("cat-b");
         Category categoryC = createAndSaveCategory("cat-c");
 
-        createAndSaveActivityWithCategory("act-1", "2041-01-01T10:00:00Z", "2041-01-01T11:00:00Z", categoryA);
-        createAndSaveActivityWithCategory("act-2", "2041-01-02T10:00:00Z", "2041-01-02T12:00:00Z", categoryB);
-        createAndSaveActivityWithCategory("act-3", "2041-01-03T10:00:00Z", "2041-01-03T13:00:00Z", categoryC);
+        createAndSaveActivityWithCategory("act-1", "2031-01-01T10:00:00Z", "2031-01-01T11:00:00Z", categoryA);
+        createAndSaveActivityWithCategory("act-2", "2031-01-02T10:00:00Z", "2031-01-02T12:00:00Z", categoryB);
+        createAndSaveActivityWithCategory("act-3", "2031-01-03T10:00:00Z", "2031-01-03T13:00:00Z", categoryC);
 
         StatisticsFilterDTO filter = new StatisticsFilterDTO(
                 null,
@@ -150,13 +150,13 @@ class StatisticsSpecificationsTest extends MySQLContainerInitializer {
     void withFilter_shouldFilterByDateRangeAndCategory() {
         Category category = createAndSaveCategory("cat-1");
 
-        createAndSaveActivityWithCategory("act-1", "2041-01-01T10:00:00Z", "2041-01-01T11:00:00Z", category);
-        createAndSaveActivityWithCategory("act-2", "2041-01-15T10:00:00Z", "2041-01-15T12:00:00Z", category);
-        createAndSaveActivity("act-3", "2041-01-20T10:00:00Z", "2041-01-20T13:00:00Z");
+        createAndSaveActivityWithCategory("act-1", "2031-01-01T10:00:00Z", "2031-01-01T11:00:00Z", category);
+        createAndSaveActivityWithCategory("act-2", "2031-01-15T10:00:00Z", "2031-01-15T12:00:00Z", category);
+        createAndSaveActivity("act-3", "2031-01-20T10:00:00Z", "2031-01-20T13:00:00Z");
 
         StatisticsFilterDTO filter = new StatisticsFilterDTO(
-                Instant.parse("2041-01-10T00:00:00Z"),
-                Instant.parse("2041-01-31T23:59:59Z"),
+                Instant.parse("2031-01-10T00:00:00Z"),
+                Instant.parse("2031-01-31T23:59:59Z"),
                 List.of("cat-1")
         );
         Specification<Activity> spec = StatisticsSpecifications.withFilter(filter);
@@ -169,7 +169,7 @@ class StatisticsSpecificationsTest extends MySQLContainerInitializer {
 
     @Test
     void withFilter_shouldReturnEmpty_whenNoActivityMatchesDateRange() {
-        createAndSaveActivity("act-1", "2041-01-01T10:00:00Z", "2041-01-01T11:00:00Z");
+        createAndSaveActivity("act-1", "2031-01-01T10:00:00Z", "2031-01-01T11:00:00Z");
 
         StatisticsFilterDTO filter = new StatisticsFilterDTO(
                 Instant.parse("2050-01-01T00:00:00Z"),
@@ -185,8 +185,8 @@ class StatisticsSpecificationsTest extends MySQLContainerInitializer {
 
     @Test
     void withFilter_shouldReturnEmpty_whenNoActivityMatchesCategory() {
-        Category category = createAndSaveCategory("cat-1");
-        createAndSaveActivity("act-1", "2041-01-01T10:00:00Z", "2041-01-01T11:00:00Z");
+        createAndSaveCategory("cat-1");
+        createAndSaveActivity("act-1", "2031-01-01T10:00:00Z", "2031-01-01T11:00:00Z");
 
         StatisticsFilterDTO filter = new StatisticsFilterDTO(
                 null,
@@ -205,7 +205,7 @@ class StatisticsSpecificationsTest extends MySQLContainerInitializer {
         Category category = createAndSaveCategory("cat-1");
 
         // Activity with multiple allocations to the same category - should be returned only once
-        Activity activity = createActivity("act-1", "2041-01-01T10:00:00Z", "2041-01-01T11:00:00Z");
+        Activity activity = createActivity("act-1", "2031-01-01T10:00:00Z", "2031-01-01T11:00:00Z");
 
         CategoryAllocation allocation1 = new CategoryAllocation();
         allocation1.setPercentage(50);
