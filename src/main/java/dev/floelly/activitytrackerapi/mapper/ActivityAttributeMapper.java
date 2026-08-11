@@ -14,6 +14,7 @@ public class ActivityAttributeMapper {
 
     public ActivityAttribute toEntity(CreateActivityAttributeRequest request, Activity activity) {
         ActivityAttribute attribute = commandMapper.toEntity(request);
+        if (attribute == null) return null;
         attribute.setActivity(activity);
         return attribute;
     }

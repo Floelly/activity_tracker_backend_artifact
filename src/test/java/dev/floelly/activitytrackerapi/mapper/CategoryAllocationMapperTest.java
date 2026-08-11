@@ -1,5 +1,6 @@
 package dev.floelly.activitytrackerapi.mapper;
 
+import dev.floelly.activitytrackerapi.dto.request.CreateActivityRequest;
 import dev.floelly.activitytrackerapi.dto.request.CreateCategoryAllocationRequest;
 import dev.floelly.activitytrackerapi.entity.Activity;
 import dev.floelly.activitytrackerapi.entity.Category;
@@ -115,7 +116,7 @@ class CategoryAllocationMapperTest {
         verify(categoryRepository).findByBusinessId("missing-cat");
         verify(subCategoryRepository, never()).findByBusinessId(any());
         verify(categoryService, never()).isValidCategorySubCategoryRelation(any(), any());
-        verify(commandMapper, never()).toEntity(any());
+        verify(commandMapper, never()).toEntity((CreateActivityRequest) any());
     }
 
     @Test
@@ -136,7 +137,7 @@ class CategoryAllocationMapperTest {
         verify(categoryRepository).findByBusinessId("cat-1");
         verify(subCategoryRepository).findByBusinessId("missing-sub");
         verify(categoryService, never()).isValidCategorySubCategoryRelation(any(), any());
-        verify(commandMapper, never()).toEntity(any());
+        verify(commandMapper, never()).toEntity((CreateActivityRequest) any());
     }
 
     @Test
@@ -167,6 +168,6 @@ class CategoryAllocationMapperTest {
         verify(categoryRepository).findByBusinessId("cat-1");
         verify(subCategoryRepository).findByBusinessId("sub-1");
         verify(categoryService).isValidCategorySubCategoryRelation(category, subCategory);
-        verify(commandMapper, never()).toEntity(any());
+        verify(commandMapper, never()).toEntity((CreateActivityRequest) any());
     }
 }
