@@ -112,14 +112,9 @@ public class ActivityService {
         Activity activity = findByBusinessId(businessId);
         commandMapper.updateEntity(activityRequest, activity);
         mergeCategoryAllocations(activity, allocationRequests);
-        if (activity.getTags() == null) {
-            activity.setTags(new HashSet<>());
-        }
+
         Set<Tag> tags = tagRepository.findByBusinessIdIn(activityRequest.tagIds());
-        activity.getTags().clear();
-        if (tags != null) {
-            activity.getTags().addAll(tags);
-        }
+        activity.setTags(tags);
 
         mergeAttributes(activity, activityRequest.customValues());
 
